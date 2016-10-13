@@ -1,0 +1,80 @@
+
+module Elasticity
+
+using JuLIP: AbstractAtoms, AbstractCalculator, stress, defm, set_defm!
+
+
+typealias Tensor{T} Array{T,4}
+
+"""
+* `elastic_moduli(at::AbstractAtoms) -> C::Tensor`
+* `elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms) -> C::Tensor`
+
+computes the 3 x 3 x 3 x 3 elastic moduli tensor
+
+*Notes:* this is a naive implementation that does not exploit
+any symmetries at all; this means it performs 9 centered finite-differences
+on the stress. The error should be in the range 1e-10
+"""
+elastic_moduli(at::AbstractAtoms) = elastic_moduli(calculator(at), at)
+
+function elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms)
+   F0 = defm(at) |> Matrix
+   h = eps()^(1/3)
+   C = zeros(3,3,3,3)
+   for i = 1:3, a = 1:3
+      F0[i,a] += h
+      set_defm!(at, F0, updatepositions=true)
+      Sp = stress(calc, at)
+      F0[i,a] -= 2*h
+      set_defm!(at, F0, updatepositions=true)
+      Sm = stress(calc, at)
+      C[:, :, i, a] = (Sp - Sm) / (2*h)
+   end
+   # symmetrise it - major symmetries C_{iajb} = C_{jbia}
+   for i = 1:3, a = 1:3, j=1:3, b=1:3
+      t = 0.5 * (C[i,a,j,b] + C[j,b,i,a])
+      C[i,a,j,b] = t
+      C[j,b,i,a] = t
+   end
+   # minor symmetries - C_{iajb} = C_{iabj}
+   for i = 1:3, a = 1:3, j=1:3, b=1:3
+      t = 0.5 * (C[i,a,j,b] + C[i,a,b,j])
+      C[i,a,j,b] = t
+      C[i,a,b,j] = t
+   end
+   return C
+end
+
+
+# """
+# compute the Lame parameters for an elasticity tensor C or throw
+# and error if the material is not isotropic.
+# """
+# function lame_parameters(C::Tensor)
+#    error("lame_parameters is not yet implemented")
+# end
+#
+#
+# """
+# check whether the elasticity tensor is isotropic; return true/false
+# """
+# function is_isotropic{T}(C::Tensor)
+#    try
+#       lame_parameters(C)
+#       return true
+#    catch
+#       return false
+#    end
+# end
+#
+# """
+# for an isotropic elasticity tensor return the poisson ratio
+# """
+# function poisson_ratio(C::Tensor)
+#    λ, μ = lame_parameters(C)
+#    return 0.5 * λ / (λ + μ)
+# end
+
+
+end

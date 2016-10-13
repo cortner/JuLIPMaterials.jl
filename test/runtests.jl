@@ -1,5 +1,13 @@
 using MaterialsScienceTools
 using Base.Test
 
-# write your own tests here
-@test 1 == 2
+tests = [
+   "test_elasticity.jl";
+]
+
+println("≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡")
+println("   MaterialsScienceTools: Start Tests   ")
+println("≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡")
+for t in tests
+   include(t)
+end

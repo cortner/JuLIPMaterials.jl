@@ -1,5 +1,7 @@
 module MaterialsScienceTools
 
-# package code goes here
+include("Elasticity.jl")
+
+include("Dislocations.jl")
 
 end # module
