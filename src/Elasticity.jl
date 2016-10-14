@@ -1,7 +1,8 @@
 
 module Elasticity
 
-using JuLIP: AbstractAtoms, AbstractCalculator, stress, defm, set_defm!
+using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
+         stress, defm, set_defm!
 
 
 typealias Tensor{T} Array{T,4}
@@ -31,20 +32,31 @@ function elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms)
       Sm = stress(calc, at)
       C[:, :, i, a] = (Sp - Sm) / (2*h)
    end
-   # symmetrise it - major symmetries C_{iajb} = C_{jbia}
-   for i = 1:3, a = 1:3, j=1:3, b=1:3
-      t = 0.5 * (C[i,a,j,b] + C[j,b,i,a])
-      C[i,a,j,b] = t
-      C[j,b,i,a] = t
-   end
-   # minor symmetries - C_{iajb} = C_{iabj}
-   for i = 1:3, a = 1:3, j=1:3, b=1:3
-      t = 0.5 * (C[i,a,j,b] + C[i,a,b,j])
-      C[i,a,j,b] = t
-      C[i,a,b,j] = t
-   end
+   # # symmetrise it - major symmetries C_{iajb} = C_{jbia}
+   # for i = 1:3, a = 1:3, j=1:3, b=1:3
+   #    t = 0.5 * (C[i,a,j,b] + C[j,b,i,a])
+   #    C[i,a,j,b] = t
+   #    C[j,b,i,a] = t
+   # end
+   # # minor symmetries - C_{iajb} = C_{iabj}
+   # for i = 1:3, a = 1:3, j=1:3, b=1:3
+   #    t = 0.5 * (C[i,a,j,b] + C[i,a,b,j])
+   #    C[i,a,j,b] = t
+   #    C[i,a,b,j] = t
+   # end
    return C
 end
+
+voigt_moduli(at::AbstractAtoms) = voigt_moduli(calculator(at), at)
+
+voigt_moduli(calc::AbstractCalculator, at::AbstractAtoms) =
+   voigt_moduli(elastic_moduli(calc, at))
+
+const voigtinds = [1, 5, 9, 6, 3, 2]
+
+voigt_moduli{T}(C::Array{T,4}) = reshape(C, 9, 9)[voigtinds, voigtinds]
+
+
 
 
 # """

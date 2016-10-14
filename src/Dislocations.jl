@@ -52,8 +52,9 @@ function fcc_edge_plane(s::AbstractString)
    X = [ JVec([0.0, 0, 0]),
          JVec([a/√8, a/2, a/√8]) ]
    # construct ASEAtoms
-   at = ASEAtoms(string(s,"2"), X)
-   set_defm!(at, F, updatepositions=false)
+   at = ASEAtoms(string(s,"2"))
+   set_defm!(at, F)
+   set_positions!(at, X)
    # compute a burgers vector in these coordinates
    b = a/√2 * JVec([1.0,0.0,0.0])
    # compute a core-offset (to add to any lattice position)
