@@ -26,10 +26,10 @@ function elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms)
    C = zeros(3,3,3,3)
    for i = 1:3, a = 1:3
       Ih[i,a] += h
-      set_defm!(at, Ih * F0, updatepositions=false)
+      set_defm!(at, Ih * F0, updatepositions=true)
       Sp = stress(calc, at)
       Ih[i,a] -= 2*h
-      set_defm!(at, Ih * F0, updatepositions=false)
+      set_defm!(at, Ih * F0, updatepositions=true)
       Sm = stress(calc, at)
       C[i, a, :, :] = (Sp - Sm) / (2*h)
       Ih[i,a] -= h

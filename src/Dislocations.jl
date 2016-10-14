@@ -3,6 +3,7 @@ module Dislocations
 
 using JuLIP
 using JuLIP.ASE
+using MaterialsScienceTools.Elasticity: elastic_moduli, voigt_moduli
 
 const Afcc = JMatF([ 0.0 1 1; 1 0 1; 1 1 0])
 
@@ -137,5 +138,21 @@ function u_edge_isotropic(x, y, b, ν)
 end
 
 
+function u_edge{T}(x, y, b, C::Array{T,4})
+   C = round(C, 1e-6)
+   Cv = voigt_moduli(C)
+   # assert some extra symmetries to make life a little simpler
+   maxCv = maximum(Cv)
+   TOL = 1e-4    # this is a pretty poor tolerance; revisit this later
+   @assert abs(Cv[1,6]/maxCv) < TOL
+   @assert abs(Cv[2,6]/maxCv) < TOL
+   # this means we can use the simplified argument from HL, p.449
+   # FIRST EQUATION:
+   #    c55 + 2 c45 p + c44 p^2 = 0
+
+   # SECOND EQUATION:
+   #    c22  c66 p^4 + (c11 c22 - 2 c12 c66 - c12^2) p^2 + c11 c66 = 0
+
+end
 
 end
