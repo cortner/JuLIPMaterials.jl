@@ -75,7 +75,9 @@ generates a linear elasticity predictor configuration for
 an edge dislocation in FCC, with burgers vector ∝ e₁  and dislocation
 core direction ν ∝ e₃
 """
-function fcc_edge_geom(s::AbstractString, R; truncate=true)
+function fcc_edge_geom(s::AbstractString, R;
+                       truncate=true, cle=:isotropic, ν=0.25, calc=nothing,
+                       TOL=1e-4)
    # compute the correct unit cell
    atu, b, xcore, a = fcc_edge_plane(s)
    # multiply the cell to fit a ball of radius a/√2 * R inside
@@ -97,8 +99,16 @@ function fcc_edge_geom(s::AbstractString, R; truncate=true)
    xcore = X12[I0] + xcore
    x, y = x - xcore[1], y - xcore[2]
    # compute the dislocation predictor
-   # >>>>>> TODO: need the "real" one; this is just for testing <<<<<<<
-   ux, uy = u_edge_isotropic(x, y, b, 0.25)
+   if cle == :isotropic
+      ux, uy = u_edge_isotropic(x, y, b, ν)
+   elseif cle == :anisotropic
+      # TODO: this doesn't look clean; maybe we need to pass atu in the future
+      set_pbc!(atu, true)
+      Cv = voigt_moduli(calc, atu)
+      ux, uy = u_edge(x, y, b, Cv, TOL=TOL)
+   else
+      error("unknown `cle`")
+   end
    # apply the linear elasticity displacement
    X = positions(at) |> mat
    X[1,:], X[2,:] = x + ux + xcore[1], y + uy + xcore[2]
@@ -138,21 +148,95 @@ function u_edge_isotropic(x, y, b, ν)
 end
 
 
-function u_edge{T}(x, y, b, C::Array{T,4})
-   C = round(C, 1e-6)
-   Cv = voigt_moduli(C)
-   # assert some extra symmetries to make life a little simpler
-   maxCv = maximum(Cv)
-   TOL = 1e-4    # this is a pretty poor tolerance; revisit this later
-   @assert abs(Cv[1,6]/maxCv) < TOL
-   @assert abs(Cv[2,6]/maxCv) < TOL
+u_edge{T}(x, y, b, C::Array{T,4}; TOL=1e-4) = u_edge(x, y, b, voigt_moduli(C), TOL=TOL)
+
+"""
+* `u_edge{T}(x, y, b, C::Array{T,N}) -> ux, uy`
+
+* `C` can be either 3 x 3 x 3 x 3 (`elastic_moduli`) or 6 x 6 (`voigt_moduli`)
+
+This function computes the anisotropic CLE solution for an in-plane
+edge dislocation. The elastic moduli are taken to within `TOL` accuracy (
+   this is a keyword argument)
+"""
+function u_edge{T}(x, y, b, Cv::Array{T,2}; TOL = 1e-4)
+   Cv = copy(Cv)
+
+   # >>>>>>>>> START DEBUG >>>>>>>>
+   Cv[2,2] = Cv[3,3] = Cv[1,1]
+   Cv[1,3] = Cv[2,3] = Cv[1,2]
+   Cv[4,4] = Cv[5,5] = Cv[6,6] = (Cv[1,1] - Cv[1,2])/2
+   # <<<<<<<<< END DEBUG <<<<<<<<<
+
+   # maxCv = maximum(abs(Cv))
+   # Iz = find(abs(Cv[:])/maxCv .<= TOL)
+   # Cv[Iz] = 0.0
+   # the following try block asserts some requirements on the elastic moduli
+   # try
+   #    # symmetries:
+   #    @assert vecnorm(Cv - Cv') < TOL
+   #    @assert Cv[1,4] == Cv[1,5] == Cv[2,4] == Cv[2,5] == 0  # (13-97)
+   #    @assert Cv[3,4] == Cv[3,5] == Cv[4,6] == Cv[5,6] == 0  # (13-97)
+   #    @assert Cv[1,6] == Cv[2,6] == 0   # (13-99)
+   #    # stability:
+   #    @assert Cv[1,1] > 0
+   #    @assert Cv[2,2] > 0
+   #    @assert Cv[6,6] > 0
+   #    @assert Cv[1,2] > 0    # see comment just before (13-108)
+   #    @assert 2*Cv[6,6] + Cv[1,2] - sqrt(Cv[1,1]*Cv[2,2]) > 0    # (13-108)
+   # catch
+   #    error("""Some symmetry or stability is not satisfied to within the required
+   #             tolerance; either fix your unit cell or increase the tolerance
+   #             setting.""")
+   # end
    # this means we can use the simplified argument from HL, p.449
-   # FIRST EQUATION:
-   #    c55 + 2 c45 p + c44 p^2 = 0
+   # the solutions are given in terms of λ, ϕ: (13-105)(13-106) and (13-107)
+   c̄11 = sqrt(Cv[1,1]*Cv[2,2])    # (13-106)
+   λ = (Cv[1,1]/Cv[2,2])^0.25
+   ϕ = 0.5 * acos( (Cv[1,2]^2 + 2*Cv[1,2]*Cv[6,6] - c̄11^2) / (2.0*c̄11*Cv[6,6]) )
+   @show λ, ϕ
+   # the solution is now given in terms of two auxiliary functions q and t
+   # note that only log(q/t) and log(q*t) occure, which we rewrite as
+   # 0.5 * log(q²/t²) and 0.5 * log(q²*t²)
+   q² = x.^2 + 2 * x .* y * λ * cos(ϕ) + y.^2 * λ^2
+   t² = x.^2 - 2 * x .* y * λ * cos(ϕ) + y.^2 * λ^2
 
-   # SECOND EQUATION:
-   #    c22  c66 p^4 + (c11 c22 - 2 c12 c66 - c12^2) p^2 + c11 c66 = 0
+   # LOOKS LIKE THESE ARE ACTUALLY NUMERICALLY UNSTABLE!!!!!
+   # ux = - (b / 4*π) * (
+   #       atan( (2*x.*y*λ*sin(ϕ)) ./ (x.^2 - λ^2*y.^2) )
+   #       + (c̄11^2 - Cv[1,2]^2) / (2*c̄11*Cv[6,6]*sin(2*ϕ)) * (0.5 * log(q²./t²))
+   #    )
+   # uy = (λ*b/(4*π*c̄11*sin(2*ϕ))) * (
+   #       (c̄11 - Cv[1,2]) * cos(ϕ) * (0.5 * log(q².*t²))
+   #       - (c̄11 + Cv[1,2]) * sin(ϕ) *
+   #                atan( (y.^2*λ^2*sin(2*ϕ)) ./ (x.^2 - λ^2 * y.^2 * cos(2*ϕ)) )
+   #    )
 
+
+   # ISOTROPIC CASE:
+   # LOOKS LIKE THIS FORMULA IS ROTATED BY PI/4!!!!
+   # ux = b/(2*π) * ( atan(x ./ y) + (x .* y) ./ (2*(1-ν) * r²) )
+   # ux = - (b / 4*π) * ( atan( (2*x.*y*λ*sin(ϕ)) ./ (x.^2 - λ^2*y.^2) ) )
+   ux = - (b / 4*π) * ( atan( (2*x.*y) ./ (x.^2 - y.^2) ) )
+
+   # uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log(r²) + (y.^2 - x.^2) ./ (4*(1-ν) * r²) )
+   # uy = (λ*b/(4*π*c̄11)) * ( (c̄11 - Cv[1,2]) * (0.5 * log(q².*t²)) )
+   uy = (b/(4*π*c̄11)) * ( (c̄11 - Cv[1,2]) * (0.5 * log(q².*t²)) )
+
+   # check that the solution is really real
+   @assert isreal(ux)
+   @assert isreal(uy)
+   return ux, uy
 end
 
+
+"""
+`u_general(X, b, C::Array{Float64, 4}) -> U`
+
+implementation of the CLE displacement field for a general
+straight dislocation line in direction ξ with burgers vector b and
+elastic moduli C.
+"""
+function u_general(X, b, ξ, C::Array{Float64, 4})
+   
 end
