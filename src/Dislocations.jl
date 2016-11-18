@@ -103,8 +103,10 @@ function fcc_edge_geom(s::AbstractString, R;
       ux, uy = u_edge_isotropic(x, y, b, ν)
    elseif cle == :anisotropic
       # TODO: this doesn't look clean; maybe we need to pass atu in the future
+      # I'm not fully understanding how the function fcc_edge_plane(s) works
       set_pbc!(atu, true)
       Cv = voigt_moduli(calc, atu)
+      print(Cv)
       ux, uy = u_edge(x, y, b, Cv, TOL=TOL)
    else
       error("unknown `cle`")
@@ -161,14 +163,13 @@ edge dislocation. The elastic moduli are taken to within `TOL` accuracy (
 """
 function u_edge{T}(x, y, b, Cv::Array{T,2}; TOL = 1e-4)
    Cv = copy(Cv)
-   #Tensor looks funny, hard coding for now to test
-   Cv[1,1] = 10.82
-   Cv[1,2] = 6.13
-   Cv[6,6] = 2.85
+   #Cv[1,1] = 10.82
+   #Cv[1,2] = 6.13
+   #Cv[6,6] = 2.85
    # >>>>>>>>> START DEBUG >>>>>>>>
-   Cv[2,2] = Cv[3,3] = Cv[1,1]
-   Cv[1,3] = Cv[2,3] = Cv[1,2]
-   Cv[4,4] = Cv[5,5] = Cv[6,6]
+   #Cv[2,2] = Cv[3,3] = Cv[1,1]
+   #Cv[1,3] = Cv[2,3] = Cv[1,2]
+   #Cv[4,4] = Cv[5,5] = Cv[6,6]
    # <<<<<<<<< END DEBUG <<<<<<<<<
 
    # maxCv = maximum(abs(Cv))
@@ -208,7 +209,6 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}; TOL = 1e-4)
           atan( (2*x.*y*λ*sin(ϕ)) ./ (x.^2 - λ^2*y.^2) )
           + (c̄11^2 - Cv[1,2]^2) / (2*c̄11*Cv[6,6]*sin(2*ϕ)) * (0.5 * log(q²./t²))
           )
-   @show  ux
    uy = (λ*b/(4*π*c̄11*sin(2*ϕ))) * (
          (c̄11 - Cv[1,2]) * cos(ϕ) * (0.5 * log(q².*t²))
           - (c̄11 + Cv[1,2]) * sin(ϕ) *
@@ -217,7 +217,6 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}; TOL = 1e-4)
    #x[y .< 0] += b/2
    r² = x.^2 + y.^2
    ν = Cv[1,2]/(Cv[1,1] + Cv[1,2])
-   print(ν)
    # ISOTROPIC CASE:
    # LOOKS LIKE THIS FORMULA IS ROTATED BY PI/4!!!!
    #ux = b/(2*π) * ( atan(x ./ y) + (x .* y) ./ (2*(1-ν) * r²) ) #Isotropic
@@ -245,4 +244,6 @@ elastic moduli C.
 """
 function u_general(X, b, ξ, C::Array{Float64, 4})
    
+end
+
 end

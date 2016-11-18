@@ -32,7 +32,7 @@ function elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms)
       set_defm!(at, Ih * F0, updatepositions=true)
       Sm = stress(calc, at)
       C[i, a, :, :] = (Sp - Sm) / (2*h)
-      Ih[i,a] -= h
+      Ih[i,a] += h
    end
    # symmetrise it - major symmetries C_{iajb} = C_{jbia}
    for i = 1:3, a = 1:3, j=1:3, b=1:3
