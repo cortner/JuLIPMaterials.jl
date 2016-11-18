@@ -161,11 +161,14 @@ edge dislocation. The elastic moduli are taken to within `TOL` accuracy (
 """
 function u_edge{T}(x, y, b, Cv::Array{T,2}; TOL = 1e-4)
    Cv = copy(Cv)
-
+   #Tensor looks funny, hard coding for now to test
+   Cv[1,1] = 10.82
+   Cv[1,2] = 6.13
+   Cv[6,6] = 2.85
    # >>>>>>>>> START DEBUG >>>>>>>>
    Cv[2,2] = Cv[3,3] = Cv[1,1]
    Cv[1,3] = Cv[2,3] = Cv[1,2]
-   Cv[4,4] = Cv[5,5] = Cv[6,6] = (Cv[1,1] - Cv[1,2])/2
+   Cv[4,4] = Cv[5,5] = Cv[6,6]
    # <<<<<<<<< END DEBUG <<<<<<<<<
 
    # maxCv = maximum(abs(Cv))
@@ -192,36 +195,39 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}; TOL = 1e-4)
    # this means we can use the simplified argument from HL, p.449
    # the solutions are given in terms of λ, ϕ: (13-105)(13-106) and (13-107)
    c̄11 = sqrt(Cv[1,1]*Cv[2,2])    # (13-106)
-   λ = (Cv[1,1]/Cv[2,2])^0.25
-   ϕ = 0.5 * acos( (Cv[1,2]^2 + 2*Cv[1,2]*Cv[6,6] - c̄11^2) / (2.0*c̄11*Cv[6,6]) )
+   λ = (Cv[1,1]/Cv[2,2])^(1/4)
+     ϕ = 0.5 * acos( (Cv[1,2]^2 + 2*Cv[1,2]*Cv[6,6] - c̄11^2) / (2.0*c̄11*Cv[6,6]) )
    @show λ, ϕ
    # the solution is now given in terms of two auxiliary functions q and t
    # note that only log(q/t) and log(q*t) occure, which we rewrite as
    # 0.5 * log(q²/t²) and 0.5 * log(q²*t²)
    q² = x.^2 + 2 * x .* y * λ * cos(ϕ) + y.^2 * λ^2
    t² = x.^2 - 2 * x .* y * λ * cos(ϕ) + y.^2 * λ^2
-
    # LOOKS LIKE THESE ARE ACTUALLY NUMERICALLY UNSTABLE!!!!!
-   # ux = - (b / 4*π) * (
-   #       atan( (2*x.*y*λ*sin(ϕ)) ./ (x.^2 - λ^2*y.^2) )
-   #       + (c̄11^2 - Cv[1,2]^2) / (2*c̄11*Cv[6,6]*sin(2*ϕ)) * (0.5 * log(q²./t²))
-   #    )
-   # uy = (λ*b/(4*π*c̄11*sin(2*ϕ))) * (
-   #       (c̄11 - Cv[1,2]) * cos(ϕ) * (0.5 * log(q².*t²))
-   #       - (c̄11 + Cv[1,2]) * sin(ϕ) *
-   #                atan( (y.^2*λ^2*sin(2*ϕ)) ./ (x.^2 - λ^2 * y.^2 * cos(2*ϕ)) )
-   #    )
-
-
+   ux = - (b / (4*π)) * (
+          atan( (2*x.*y*λ*sin(ϕ)) ./ (x.^2 - λ^2*y.^2) )
+          + (c̄11^2 - Cv[1,2]^2) / (2*c̄11*Cv[6,6]*sin(2*ϕ)) * (0.5 * log(q²./t²))
+          )
+   @show  ux
+   uy = (λ*b/(4*π*c̄11*sin(2*ϕ))) * (
+         (c̄11 - Cv[1,2]) * cos(ϕ) * (0.5 * log(q².*t²))
+          - (c̄11 + Cv[1,2]) * sin(ϕ) *
+                   atan( (y.^2*λ^2*sin(2*ϕ)) ./ (x.^2 - λ^2 * y.^2 * cos(2*ϕ)) )
+       )
+   #x[y .< 0] += b/2
+   r² = x.^2 + y.^2
+   ν = Cv[1,2]/(Cv[1,1] + Cv[1,2])
+   print(ν)
    # ISOTROPIC CASE:
    # LOOKS LIKE THIS FORMULA IS ROTATED BY PI/4!!!!
-   # ux = b/(2*π) * ( atan(x ./ y) + (x .* y) ./ (2*(1-ν) * r²) )
+   #ux = b/(2*π) * ( atan(x ./ y) + (x .* y) ./ (2*(1-ν) * r²) ) #Isotropic
    # ux = - (b / 4*π) * ( atan( (2*x.*y*λ*sin(ϕ)) ./ (x.^2 - λ^2*y.^2) ) )
-   ux = - (b / 4*π) * ( atan( (2*x.*y) ./ (x.^2 - y.^2) ) )
+   #ux = - (b / 4*π) * ( atan( (2*x.*y) ./ (x.^2 - y.^2) ) ) #Anisotropic
 
-   # uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log(r²) + (y.^2 - x.^2) ./ (4*(1-ν) * r²) )
-   # uy = (λ*b/(4*π*c̄11)) * ( (c̄11 - Cv[1,2]) * (0.5 * log(q².*t²)) )
-   uy = (b/(4*π*c̄11)) * ( (c̄11 - Cv[1,2]) * (0.5 * log(q².*t²)) )
+   
+   #uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log(r²) + (y.^2 - x.^2) ./ (4*(1-ν) * r²) ) #Isotropic
+   #uy = (λ*b/(4*π*c̄11)) * ( (c̄11 - Cv[1,2]) * (0.5 * log(q².*t²)) )
+   #uy = (b/(4*π*c̄11)) * ( (c̄11 - Cv[1,2]) * (0.5 * log(q².*t²)) ) #Anisotropic
 
    # check that the solution is really real
    @assert isreal(ux)
