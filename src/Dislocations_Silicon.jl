@@ -1,5 +1,5 @@
 
-module Dislocations
+module Dislocations_Silicon
 
 using JuLIP
 using JuLIP.ASE
@@ -50,15 +50,14 @@ function fcc_edge_plane(s::AbstractString)
    F = JMat( [a/√2   0    0;
                  0   a    0;
                  0   0    a/√2 ] )
-   X = [ JVec([0.0, 0, 0]),
-         JVec([a/√8, a/2, a/√8]) ]
+   X = a/sqrt(2)* [ JVec([0.0, 0, 0]),
+         JVec([1/2, √3/2,0]), JVec([1/2, 1/(2*√3), 1/12]) ]
    # construct ASEAtoms
-   at = ASEAtoms(string(s,"2"))
-   print(at[2])
+   at = ASEAtoms(string(s,"3"))
    set_defm!(at, F)
    set_positions!(at, X)
    # compute a burgers vector in these coordinates
-   b = a/√2 * JVec([1.0,0.0,0.0])
+   b =  a/sqrt(2)*JVec([1.0,0.0,0.0])
    # compute a core-offset (to add to any lattice position)
    xcore = a/√2 * JVec([1/2, 1/3, 0])  # [1/2, 1/3, 0]
    # return the information
@@ -81,6 +80,7 @@ function fcc_edge_geom(s::AbstractString, R;
                        TOL=1e-4)
    # compute the correct unit cell
    atu, b, xcore, a = fcc_edge_plane(s)
+   print(a/sqrt(2))
    # multiply the cell to fit a ball of radius a/√2 * R inside
    L1 = ceil(Int, 2*R) + 3
    L2 = ceil(Int, 2*R/√2) + 3
