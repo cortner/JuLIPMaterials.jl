@@ -60,58 +60,137 @@ const voigtinds = [1, 5, 9, 4, 7, 8]
 
 voigt_moduli{T}(C::Array{T,4}) = reshape(C, 9, 9)[voigtinds, voigtinds]
 
+
+
+function four_to_two_index(i, j)
+
+if (i == 1 && j == 1)
+   dumb = 1
+elseif (i == 2 && j ==2)
+   dumb = 2
+elseif (i == 3 && j == 3)
+   dumb = 3
+elseif ((i == 3 && j == 2) || (i == 2 && j == 3))
+   dumb = 4
+elseif ((i == 3 && j == 1) || (i == 1 && j == 3))
+   dumb = 5
+elseif ((i == 2 && j == 1) || (i == 1 && j == 2))
+   dumb = 6
+end
+
+return dumb
+
+end
+
+
+
+function two_to_four_index(k)
+
+it = 0
+jit = 0
+
+if k == 1
+   it = 1;
+   jit = 1;
+elseif k == 2
+   it = 2;
+   jit = 2;
+elseif k == 3
+   it = 3;
+   jit = 3;
+elseif k == 4
+   it = 3;
+   jit = 2;
+elseif k == 5
+   it = 3;
+   jit = 1;
+elseif k == 6
+   it = 2;
+   jit = 1;
+end
+    
+return it, jit
+
+end
+
 function fourth_order_basis{T}(D::Array{T,2},a)
    C = zeros(3,3,3,3)
    Chat = zeros(3,3,3,3)
+
    #Convert back to Tensor notation
-   for k=1:3
-     C[k,k,1,1] = C[1,1,k,k] = D[1,k]
-     C[k,k,1,2] = C[1,2,k,k] = C[k,k,2,1] = C[2,1,k,k] = D[k,6]
-     C[k,k,1,3] = C[1,3,k,k] = C[k,k,3,1] = C[3,1,k,k] = D[k,5]
-     C[k,k,2,3] = C[2,3,k,k] = C[k,k,3,2] = C[3,2,k,k] = D[k,4]
-     C[k,k,3,3] = C[3,3,k,k] = D[k,3]
+   for i=1:3, j = 1:3, k = 1:3, l = 1:3
+   	m = four_to_two_index(i,j)
+        n = four_to_two_index(k,l)
+        C[i,j,k,l] = D[m,n]    
    end
-   
-   C[2,3,1,2] = C[3,2,1,2] = C[2,3,2,1] =  C[1,2,2,3] = D[4,6]
-   C[1,3,1,2] = C[3,1,1,2] = C[1,2,1,3] = C[1,3,2,1] = D[5,6]
-   C[1,2,1,2] = C[2,1,1,2] = C[1,2,2,1] = D[6,6]
-   C[2,2,2,2] = D[2,2]
-   C[2,3,2,3] = C[3,2,2,3] = C[2,3,3,2] = D[4,4]
-   C[2,3,1,3] = C[3,2,1,3] = C[1,3,2,3] = C[2,3,3,1] = D[4,5]
-   C[1,3,1,3] = C[3,1,1,3] = C[1,3,3,1] = D[5,5]
-   E = eye(3)
-   X = [1/sqrt(6) 1/sqrt(3) -1/sqrt(2); -2/sqrt(6) 1/sqrt(3) 0 ; 1/sqrt(6) 1/sqrt(3) 1/sqrt(2)]
-   X = transpose(X)
-   
+
+   #Rotate the tensor to correct orientation
+   Tr = 1/sqrt(6)*[sqrt(3) 0 -sqrt(3); sqrt(2) sqrt(2) sqrt(2); 1 -2 1]
    Q = zeros(3,3,3,3)
    for i=1:3, j=1:3, k=1:3, l=1:3
-     Q[i,j,k,l] = X[k,i]*X[l,j]
+	Q[i,j,k,l] = Tr[k,i]*Tr[l,j]
    end
+
+
+   for i=1:3, j=1:3, k=1:3, l=1:3, g=1:3, h=1:3, m=1:3, n=1:3
+	Chat[i,j,k,l] = Chat[i,j,k,l] + Q[g,h,i,j]*C[g,h,m,n]*Q[m,n,k,l]
+   end
+
+   M = zeros(6,6)
+   #Convert the tensor back to 6 by 6
+   for i=1:6, j=1:6
+        m, n = two_to_four_index(i)
+        p, q = two_to_four_index(j)
+        M[i,j] = Chat[m,n,p,q]
+   end
+
+   #E = eye(3)
+   #X = [1/sqrt(6) 1/sqrt(3) -1/sqrt(2); -2/sqrt(6) 1/sqrt(3) 0 ; 1/sqrt(6) 1/sqrt(3) 1/sqrt(2)]
+   #X = transpose(X)
+   
+   #Q = zeros(3,3,3,3)
+   #for i=1:3, j=1:3, k=1:3, l=1:3
+   #  Q[i,j,k,l] = X[k,i]*X[l,j]
+   #end
 
 
    #Now change the basis:
-   for i =1:3, j = 1:3, k = 1:3, l = 1:3
-     for p =1:3, q = 1:3, r = 1:3, s = 1:3
+   #for i =1:3, j = 1:3, k = 1:3, l = 1:3
+   #  for p =1:3, q = 1:3, r = 1:3, s = 1:3
        #Chat[i,j,k,l] = Chat[i,j,k,l] + C[p,q,r,s]*dot(E[:,p], X[:,i])*dot(E[:,q], X[:,j])*dot(E[:,r], X[:,k])*dot(E[:,s], X[:,l])
-       Chat[i,j,k,l] = Chat[i,j,k,l] + Q[p,q,i,j]*C[p,q,r,s]*Q[r,s,k,l]
-     end
-   end 
+   #    Chat[i,j,k,l] = Chat[i,j,k,l] + Q[p,q,i,j]*C[p,q,r,s]*Q[r,s,k,l]
+   #  end
+   #end
 
-   # symmetrise it - major symmetries C_{iajb} = C_{jbia}
-   for i = 1:3, m = 1:3, j=1:3, b=1:3
-      t = 0.5 * (Chat[i,m,j,b] + Chat[j,b,i,m])
-      Chat[i,m,j,b] = t
-      Chat[j,b,i,m] = t
-   end
-   # minor symmetries - C_{iajb} = C_{iabj}
-   for i = 1:3, m = 1:3, j=1:3, b=1:3
-      t = 0.5 * (Chat[i,m,j,b] + Chat[i,m,b,j])
-      Chat[i,m,j,b] = t
-      Chat[i,m,b,j] = t
-   end
+  return M
+end
 
-   Chat = reshape(Chat, 9, 9)[voigtinds, voigtinds]
-   return Chat	
+
+function sextic_roots{T}(D::Array{T,2})
+
+#Comput coefficients of polynomial p^6 + k_4p^4 + k_2p^2 + k_0
+  k_4 = (D[1,1]*D[2,2]*D[4,4]+D[2,2]*D[4,4]*D[5,5]+D[4,4]^3-4*D[2,2]*D[1,4]^2-D[4,4]*(D[4,4]+D[1,2])^2)/(D[2,2]*D[4,4]^2)
+
+  k_2 = (D[1,1]*D[2,2]*D[5,5]+D[1,1]*D[4,4]^2+D[5,5]*D[4,4]^2+4*D[1,2]*D[1,4]^2-D[1,4]^2*D[4,4]-D[5,5]*(D[1,2]+D[4,4])^2)/((D[2,2]*D[4,4])^2)
+
+  k_0 = (D[1,1]*D[4,4]*D[5,5]-D[1,4]^2*D[1,1])/(D[2,2]*D[4,4]^2)
+
+  #Test case
+  k_4 = -1
+  k_2 = 1
+  k_0 = -1
+
+#Compute the roots p = r^2 of the sextic polynomial using general solution of cubic
+  Q =  (3*k_2 - k_4^2)/9
+  R =  (9*k_2*k_4-27*k_0-2*k_4^3)/54
+  E =  Q^3 + R^2
+  S = cbrt(R+sqrt(E))
+  U = cbrt(R-sqrt(E))
+  r_1 = -1/3*k_4 + (S + U)
+  r_2 = -1/3*k_4-1/2*(S+U)+1/2*im*sqrt(3)*(S-U)
+  r_3 = -1/3*k_4-1/2*(S+U)-1/2*im*sqrt(3)*(S-U)
+
+  return r_1, r_2, r_3
 end
 
 # """
