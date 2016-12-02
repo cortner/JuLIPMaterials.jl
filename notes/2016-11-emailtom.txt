@@ -1,0 +1,23 @@
+email exchange with Tom Hudson:
+
+Hi Christoph,
+
+I was chatting to Steve Fitzgerald, and he said that the polynomial method used in Hirth and Lothe for finding the anisotropic Green's function is horrible, as you found out. He suggested instead using a simple integral formulation which is given in Bacon, Barnett and Scattergood (attached: it's a review from 1979, and is 212 pages long, hence the large filesize).
+
+The key part is on P32, formulae (2.4.14) and (2.4.18) (see the lines on the following page too). You have to numerically integrate the latter expression, but it should be nicer to implement than the polynomial representation, and it should also be super smooth, so interpolating over the sphere should be no problem. Apparently he has code set up to do it in Matlab, (so should translate well into Julia) which he said he's also very happy to supply.
+
+All the best,
+
+Tom
+
+
+Is there a straightforward way to get the dislocation solution from the Green’s function?
+
+
+I think you want (4.1.25) on p106, for which you need the tensors S and B defined on p104. 
+
+omega is an angular variable, and the "cut" will lie along the line omega=0. To get a good atomistic displacement field for an edge dislocation with half plane in the y-direction, you might have to play with the choice of the omega=0 line to get this to work out, but the tensors are independent of the choice of this line, depending only on the coordinates of your box. In the definition of S in (3.6.6), m is simply n rotated through pi/2 in-plane.
+
+
+
+
