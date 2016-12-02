@@ -166,6 +166,66 @@ function fourth_order_basis{T}(D::Array{T,2},a)
 end
 
 
+function A_coefficients{T}(p::Array{Complex{Float64},1},D::Array{T,2})
+
+  A = Complex{Float64}[0 0 0; 0 0 0; 0 0 0]
+  x = Complex{Float64}[0; 0 ; 0]
+  y = Complex{Float64}[0; 0 ; 0]
+  w = Complex{Float64}[0; 0 ; 0]
+  z = Complex{Float64}[0; 0 ; 0]
+
+  for i=1:3
+    x[i] = D[1,4]^2 - D[4,4]*D[5,5]-(D[4,4]^2+D[2,2]*D[5,5])*( (real(p[i]))^2 - (imag(p[i]))^2) - D[4,4]*D[2,2]*( ((real(p[i]))^2 - (imag(p[i]))^2)^2 - 4*(real(p[i]))^2*(imag(p[i]))^2  )   #real B'
+    y[i] = -2*(D[2,2]*D[5,5]+D[4,4]^2)*real(p[i])*imag(p[i])-4*D[2,2]*D[4,4]*real(p[i])*imag(p[i])*( (real(p[i]))^2 - (imag(p[i]))^2)    #image B'
+    w[i] = 2*D[2,2]*D[1,4]*real(p[i])*( (real(p[i]))^2 - (imag(p[i]))^2)+D[1,4]*(D[4,4]-D[1,2])*real(p[i])-4*D[1,4]*D[2,2]*real(p[i])*(imag(p[i]))^2   #real B''
+    z[i] = 4*D[1,4]*D[2,2]*(real(p[i]))^2*imag(p[i])+2*D[2,2]*D[1,4]*imag(p[i])*( (real(p[i]))^2 - (imag(p[i]))^2)  +D[1,4]*(D[4,4]-D[1,2])*imag(p[i])  #image B''
+  end
+
+  for i=1:3
+    A[1,i] = (x[i]*w[i]+y[i]*z[i])/(w[i]^2+z[i]^2)+ ((y[i]*w[i]-x[i]*z[i])/ (w[i]^2+z[i]^2))*im
+    A[2,i] = 2*(imag(p[i])*imag(A[1,i]) - real(A[1,i])*real(p[i]))-(D[5,5]+D[4,4]*( (real(p[i]))^2 - (imag(p[i]))^2)  )/D[4,4] - (2*D[4,4]*real(p[i])*imag(p[i]) + 2*D[1,4]*(real(p[i])*imag(A[1,i])-imag(p[i])*real(A[1,i]) )  )*(1/D[1,4])*im
+    A[3,i] = 1+0*im
+  end
+  
+  return A
+
+end
+
+
+function D_coefficients{T}(p::Array{Complex{Float64},1},D::Array{T,2}, A::Array{Complex{Float64},2}, b)
+
+  alpha = zeros(6,6)
+  v = zeros(6,1)
+  v[1] = b #first three components of v are burgers vector
+  for i=1:3
+    for j=1:6
+      l = ceil(j/2)
+      l = convert(Int,l)
+      if mod(j,2) == 0
+        alpha[i,j] = -imag(A[i,l])
+      else
+        alpha[i,j] = real(A[i,l])
+      end
+    end 
+  end
+  
+  for j=1:3
+    k = 2*j-1
+    m = 2*j
+    l = ceil(k/2)
+    l = convert(Int,l)
+    alpha[4,k] = D[6,6]*(real(A[1,l])*real(p[l])-imag(A[1,l])*imag(p[l])+real(A[2,l]) ) + D[5,6]
+    alpha[5,k] = D[1,2]*real(A[1,l])+D[2,2]*(real(A[2,l])*real(p[l]) - imag(A[2,l])*imag(p[l])  )
+    alpha[6,k] = D[1,4]*real(A[1,l])+D[4,4]*real(p[l])
+    
+    alpha[4,m] = -D[6,6]*(real(A[1,l])*imag(p[l])+imag(A[1,l])*real(p[l])+imag(A[2,l])  )
+    alpha[5,m] = -D[1,2]*imag(A[1,l])-D[2,2]*(real(A[2,l])*imag(p[l])+imag(A[2,l])*real(p[l]))
+    alpha[6,m] = -D[1,4]*imag(A[1,l])-D[4,4]*imag(p[l])
+  end
+  D = \(alpha,v)
+  return D
+end
+
 function sextic_roots{T}(D::Array{T,2})
 
 #Comput coefficients of polynomial p^6 + k_4p^4 + k_2p^2 + k_0
@@ -175,22 +235,31 @@ function sextic_roots{T}(D::Array{T,2})
 
   k_0 = (D[1,1]*D[4,4]*D[5,5]-D[1,4]^2*D[1,1])/(D[2,2]*D[4,4]^2)
 
-  #Test case
-  k_4 = -1
-  k_2 = 1
-  k_0 = -1
 
-#Compute the roots p = r^2 of the sextic polynomial using general solution of cubic
+#Compute the roots p^2 = r of the sextic polynomial using general solution of cubic
   Q =  (3*k_2 - k_4^2)/9
   R =  (9*k_2*k_4-27*k_0-2*k_4^3)/54
   E =  Q^3 + R^2
   S = cbrt(R+sqrt(E))
   U = cbrt(R-sqrt(E))
-  r_1 = -1/3*k_4 + (S + U)
+  r_1 = -1/3*k_4 + (S + U) + 0*im
   r_2 = -1/3*k_4-1/2*(S+U)+1/2*im*sqrt(3)*(S-U)
   r_3 = -1/3*k_4-1/2*(S+U)-1/2*im*sqrt(3)*(S-U)
+#Now compute the roots p = \pm sqrt(r) making sure to take those with positive imaginary part
+  p = Complex{Float64}[0; 0 ; 0]
 
-  return r_1, r_2, r_3
+  p[1] = sqrt(r_1)
+  p[2] = sqrt(r_2)
+  p[3] = sqrt(r_3)
+
+  for i=1:3
+    if imag(p[i]) < 0
+      p[i] = -p[i]
+    end
+  end
+
+
+  return p
 end
 
 # """
