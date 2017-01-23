@@ -59,7 +59,7 @@ function fcc_edge_plane(s::AbstractString)
    # compute a burgers vector in these coordinates
    b =  a*sqrt(2)/2*JVec([1.0,0.0,0.0])
    # compute a core-offset (to add to any lattice position)
-   xcore = a*sqrt(2)/2 * JVec([1/2, 1/3, 0])  # [1/2, 1/3, 0]
+   xcore = [.5, -.5, 0]#a*sqrt(2)/2 * JVec([1/2, 1/3, 0])  # [1/2, 1/3, 0]
    # return the information
    return at, b, xcore, a
 end
