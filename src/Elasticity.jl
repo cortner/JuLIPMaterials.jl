@@ -125,7 +125,7 @@ function fourth_order_basis{T}(D::Array{T,2},a)
    end
 
    #Rotate the tensor to correct orientation
-   Tr = 1/sqrt(6)*[sqrt(3) 0 -sqrt(3); sqrt(2) sqrt(2) sqrt(2); 1 -2 1]
+   Tr = 1/sqrt(6)*[-sqrt(3) sqrt(3) 0; -sqrt(2) -sqrt(2) sqrt(2); 1 1 2]#1/sqrt(6)*[sqrt(3) 0 -sqrt(3); sqrt(2) sqrt(2) sqrt(2); 1 -2 1] Fix from 1/25
    Q = zeros(3,3,3,3)
    for i=1:3, j=1:3, k=1:3, l=1:3
 	Q[i,j,k,l] = Tr[k,i]*Tr[l,j]
@@ -230,16 +230,21 @@ function sextic_roots{T}(D::Array{T,2})
 
 #Comput coefficients of polynomial p^6 + k_4p^4 + k_2p^2 + k_0
   k_4 = (D[1,1]*D[2,2]*D[4,4]+D[2,2]*D[4,4]*D[5,5]+D[4,4]^3-4*D[2,2]*D[1,4]^2-D[4,4]*(D[4,4]+D[1,2])^2)/(D[2,2]*D[4,4]^2)
-
-  k_2 = (D[1,1]*D[2,2]*D[5,5]+D[1,1]*D[4,4]^2+D[5,5]*D[4,4]^2+4*D[1,2]*D[1,4]^2-D[1,4]^2*D[4,4]-D[5,5]*(D[1,2]+D[4,4])^2)/((D[2,2]*D[4,4])^2)
-
+  print("k4: ")
+  print(k_4)
+  k_2 = (D[1,1]*D[2,2]*D[5,5]+D[1,1]*D[4,4]^2+D[5,5]*D[4,4]^2+4*D[1,2]*D[1,4]^2-D[1,4]^2*D[4,4]-D[5,5]*(D[1,2]+D[4,4])^2)/(D[2,2]*D[4,4]^2) #I think there was a mistake in published result
+  print("k2: ")
+  print(k_2)
   k_0 = (D[1,1]*D[4,4]*D[5,5]-D[1,4]^2*D[1,1])/(D[2,2]*D[4,4]^2)
-
+  print("k0: ")
+  print(k_0)
 
 #Compute the roots p^2 = r of the sextic polynomial using general solution of cubic
   Q =  (3*k_2 - k_4^2)/9
   R =  (9*k_2*k_4-27*k_0-2*k_4^3)/54
   E =  Q^3 + R^2
+  print("E: ")
+  print(E)
   S = cbrt(R+sqrt(E))
   U = cbrt(R-sqrt(E))
   r_1 = -1/3*k_4 + (S + U) + 0*im
