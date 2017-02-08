@@ -1,5 +1,5 @@
 
-module Elasticity
+module Elasticity_110
 
 using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
          stress, defm, set_defm!
@@ -113,6 +113,47 @@ return it, jit
 
 end
 
+
+
+
+
+function little_a{T}(D::Array{T,2},r,s)
+  
+   C = zeros(3,3,3,3)
+   Chat = zeros(3,3,3,3)
+
+   #Convert back to Tensor notation
+   for i=1:3, j = 1:3, k = 1:3, l = 1:3
+   	m = four_to_two_index(i,j)
+        n = four_to_two_index(k,l)
+        C[i,j,k,l] = D[m,n]    
+   end
+
+   #Rotate the tensor to correct orientation
+   Tr = [1/sqrt(2) -1/sqrt(2) 0; 0 0 1; 1/sqrt(2) 1/sqrt(2) 0]
+   Q = zeros(3,3,3,3)
+   for i=1:3, j=1:3, k=1:3, l=1:3
+	Q[i,j,k,l] = Tr[k,i]*Tr[l,j]
+   end
+
+
+   for i=1:3, j=1:3, k=1:3, l=1:3, g=1:3, h=1:3, m=1:3, n=1:3
+	Chat[i,j,k,l] = Chat[i,j,k,l] + Q[g,h,i,j]*C[g,h,m,n]*Q[m,n,k,l]
+   end
+
+   #M = zeros(3,1)
+   #M(1,1) = Chat[r,1,s,1]
+   #M(2,1) = Chat[r,1,s,2] + Chat[r,2,s,1]
+   #M(3,1) = Chat[r,2,s,2]
+   #return M(1,1), M(2,1), M(3,1)
+   p0 = Chat[r,1,s,1]
+   p1 = Chat[r,1,s,2] + Chat[r,2,s,1]
+   p2 = Chat[r,2,s,2]
+   return p0, p1, p2
+end
+
+
+
 function fourth_order_basis{T}(D::Array{T,2},a)
    C = zeros(3,3,3,3)
    Chat = zeros(3,3,3,3)
@@ -125,7 +166,7 @@ function fourth_order_basis{T}(D::Array{T,2},a)
    end
 
    #Rotate the tensor to correct orientation
-   Tr = 1/sqrt(6)*[-sqrt(3) sqrt(3) 0; -sqrt(2) -sqrt(2) sqrt(2); 1 1 2]#1/sqrt(6)*[sqrt(3) 0 -sqrt(3); sqrt(2) sqrt(2) sqrt(2); 1 -2 1] Fix from 1/25
+   Tr = [1/sqrt(2) -1/sqrt(2) 0; 0 0 1; 1/sqrt(2) 1/sqrt(2) 0]
    Q = zeros(3,3,3,3)
    for i=1:3, j=1:3, k=1:3, l=1:3
 	Q[i,j,k,l] = Tr[k,i]*Tr[l,j]
@@ -229,22 +270,30 @@ end
 function sextic_roots{T}(D::Array{T,2})
 
 #Comput coefficients of polynomial p^6 + k_4p^4 + k_2p^2 + k_0
-  k_4 = (D[1,1]*D[2,2]*D[4,4]+D[2,2]*D[4,4]*D[5,5]+D[4,4]^3-4*D[2,2]*D[1,4]^2-D[4,4]*(D[4,4]+D[1,2])^2)/(D[2,2]*D[4,4]^2)
-  print("k4: ")
-  print(k_4)
-  k_2 = (D[1,1]*D[2,2]*D[5,5]+D[1,1]*D[4,4]^2+D[5,5]*D[4,4]^2+4*D[1,2]*D[1,4]^2-D[1,4]^2*D[4,4]-D[5,5]*(D[1,2]+D[4,4])^2)/(D[2,2]*D[4,4]^2) #I think there was a mistake in published result
-  print("k2: ")
-  print(k_2)
-  k_0 = (D[1,1]*D[4,4]*D[5,5]-D[1,4]^2*D[1,1])/(D[2,2]*D[4,4]^2)
-  print("k0: ")
-  print(k_0)
+  #k_4 = (D[1,1]*D[2,2]*D[4,4]+D[2,2]*D[4,4]*D[5,5]+D[4,4]^3-4*D[2,2]*D[1,4]^2-D[4,4]*(D[4,4]+D[1,2])^2)/(D[2,2]*D[4,4]^2)
+  #print("k4: ")
+  #print(k_4)
+  #k_2 = (D[1,1]*D[2,2]*D[5,5]+D[1,1]*D[4,4]^2+D[5,5]*D[4,4]^2+4*D[1,2]*D[1,4]^2-D[1,4]^2*D[4,4]-D[5,5]*(D[1,2]+D[4,4])^2)/(D[2,2]*D[4,4]^2) #I think there was a mistake in published result
+  #print("k2: ")
+  #print(k_2)
+  #k_0 = (D[1,1]*D[4,4]*D[5,5]-D[1,4]^2*D[1,1])/(D[2,2]*D[4,4]^2)
+  #print("k0: ")
+  #print(k_0)
+  
+  inter = D[1,1]*D[2,2]-2*D[1,2]*D[6,6]-D[1,2]^2
+  lead = D[2,2]*D[4,4]*D[6,6]
+  k_0 = D[5,5]*D[6,6]*D[1,1]/lead
+
+  k_2 = (D[4,4]*D[1,1]*D[6,6] + D[5,5]*inter)/lead
+
+  k_4 = (D[4,4]*inter+D[5,5]*D[2,2]*D[6,6])/lead
 
 #Compute the roots p^2 = r of the sextic polynomial using general solution of cubic
   Q =  (3*k_2 - k_4^2)/9
   R =  (9*k_2*k_4-27*k_0-2*k_4^3)/54
   E =  Q^3 + R^2
-  print("E: ")
-  print(E)
+  #print("E: ")
+  #print(E)
   S = cbrt(R+sqrt(E))
   U = cbrt(R-sqrt(E))
   r_1 = -1/3*k_4 + (S + U) + 0*im

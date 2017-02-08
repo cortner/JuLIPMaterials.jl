@@ -1,5 +1,5 @@
 
-module Dislocations_Silicon_hard
+module no_dislocation
 
 using JuLIP
 using JuLIP.ASE
@@ -52,7 +52,7 @@ function fcc_edge_plane(s::AbstractString)
                  0   2*sqrt(3)/3     0;
                  0   0    1/sqrt(6) ] )
    X = a*[ JVec([0.0, 0.0, 0.0]),
-         JVec([sqrt(2)/4, sqrt(3)/3, 1/(sqrt(6)*2)]), JVec([0, sqrt(3)/4, 0]),JVec([sqrt(2)/4,-sqrt(3)/3+sqrt(3)/4, 1/(sqrt(6)*2)]) ]
+         JVec([sqrt(2)/4, sqrt(3)/3, 1/(sqrt(6)*2)]), JVec([0, sqrt(3)/4, 0]),JVec([sqrt(2)/4,sqrt(3)/3+sqrt(3)/4, 1/(sqrt(6)*2)]) ]
    # construct ASEAtoms
    at = ASEAtoms(string(s,"4"))
    set_defm!(at, F)
@@ -60,7 +60,7 @@ function fcc_edge_plane(s::AbstractString)
    # compute a burgers vector in these coordinates
    b =  a*sqrt(2)/2*JVec([1.0,0.0,0.0])
    # compute a core-offset (to add to any lattice position)
-   xcore = [.1, -.1, 0]#a*sqrt(2)/2 * JVec([1/2, 1/3, 0])  # [1/2, 1/3, 0]
+   xcore = [0, 0, 0]#a*sqrt(2)/2 * JVec([1/2, 1/3, 0])  # [1/2, 1/3, 0]
    # return the information
    return at, b, xcore, a
 end
@@ -77,45 +77,33 @@ an edge dislocation in FCC, with burgers vector ∝ e₁  and dislocation
 core direction ν ∝ e₃
 """
 function fcc_edge_geom(s::AbstractString, R;
-                       truncate=true, cle=:isotropic, ν=0.25, calc=nothing,
+                       truncate=true, ν=0.25, calc=nothing,
                        TOL=1e-4)
    # compute the correct unit cell
    atu, b, xcore, a = fcc_edge_plane(s)
    # multiply the cell to fit a ball of radius a/√2 * R inside
    L1 = ceil(Int, 2*R) + 3
    L2 = ceil(Int, 2*R/√2) + 3
+   #L3 = ceil(Int, 2*R/√2) + 3
    at = atu * (L1,L2, 1)
+   #atv = bulk("Si", cubic=true) * 10
    # mess with the data
    # turn the Burgers vector into a scalar
    @assert b[2] == b[3] == 0.0
    b = b[1]
    # compute a dislocation core
-   xcore = project12(xcore)
-   X12 = project12.(positions(at))
+   #xcore = project12(xcore)
+   #X12 = project12.(positions(at))
    # compute x, y coordinates relative to the core
-   x, y = mat(X12)[1,:], mat(X12)[2,:]
-   xc, yc = mean(x), mean(y)
-   r² = (x-xc).^2 + (y-yc).^2
-   I0 = find( r² .== minimum(r²) )[1]
-   xcore = X12[I0] + xcore
-   x, y = x - xcore[1], y - xcore[2]
-   # compute the dislocation predictor
-   if cle == :isotropic
-      ux, uy = u_edge_isotropic(x, y, b, ν)
-   elseif cle == :anisotropic
-      # TODO: this doesn't look clean; maybe we need to pass atu in the future
-      # I'm not fully understanding how the function fcc_edge_plane(s) works
-      set_pbc!(atu, true)
-      atv = bulk("Si", cubic=true) * 4
-      Cv = voigt_moduli(calc, atv)
-      print(Cv)
-      ux, uy = u_edge(x, y, b, Cv, a, TOL=TOL)
-   else
-      error("unknown `cle`")
-   end
+   #x, y = mat(X12)[1,:], mat(X12)[2,:]
+   #xc, yc = mean(x), mean(y)
+   #r² = (x-xc).^2 + (y-yc).^2
+   #I0 = find( r² .== minimum(r²) )[1]
+   #xcore = X12[I0] + xcore
+   #x, y = x - xcore[1], y - xcore[2]
    # apply the linear elasticity displacement
-   X = positions(at) |> mat
-   X[1,:], X[2,:] = x + ux + xcore[1], y + uy + xcore[2]
+   #X = positions(at) |> mat
+   #X[1,:], X[2,:] = x + xcore[1], y + xcore[2]
    # if we want a circular cluster, then truncate to an approximate ball (disk)
    if truncate
       F = defm(at) # store F for later use
@@ -126,8 +114,8 @@ function fcc_edge_geom(s::AbstractString, R;
       set_defm!(at, F)                 # and insert the old cell shape
    end
    # update positions in Atoms object, set correct BCs and return
-   set_positions!(at, X)
-   set_pbc!(at, (false, false, true))
+   #set_positions!(at, X)
+   set_pbc!(at, (true, true, true))
    return at, xcore
 end
 
@@ -169,13 +157,13 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4)
    test2 = Cv[1,2]
    test3 = Cv[6,6]
    Cv = zeros(6,6)
-   Cv[1,1] = 1.0*test1
-   Cv[1,2] = 1.0*test2
-   Cv[6,6] = 1.0*test3
+   Cv[1,1] = 10*test1
+   Cv[1,2] = 10*test2
+   Cv[6,6] = 10*test3
    #Hard code the elasticity tensor for now
-   Cv[1,1] = 16.57
-   Cv[1,2] = 6.39
-   Cv[6,6] = 7.96
+   #Cv[1,1] = 15.1478#16.57
+   #Cv[1,2] = 7.6493 #6.39
+   #Cv[6,6] = 10.9814#7.96
    # >>>>>>>>> START DEBUG >>>>>>>>
    Cv[2,2] = Cv[3,3] = Cv[1,1]
    Cv[1,3] = Cv[2,3] = Cv[2,1] = Cv[3,1] = Cv[3,2] = Cv[1,2]
@@ -186,11 +174,9 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4)
    # <<<<<<<<< END DEBUG <<<<<<<<<
    #Now transform Cv into the correct coordinate basis 
    C = fourth_order_basis(Cv,a)
+   p = sextic_roots(C)
    Cvoigt = round(C, 3)
    print(Cvoigt)
-   p = sextic_roots(C)
-   print("p: ")
-   print(p)
    #Should test this against solving the full linear system
    A = A_coefficients(p,C)
    #Set up for burgers vector in x1 direction only
