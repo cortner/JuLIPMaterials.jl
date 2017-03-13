@@ -70,6 +70,34 @@ end
 project12(x) = SVec{2}([x[1],x[2]])
 
 
+"lattice corrector to CLE edge solution"
+function xi_solver(Y::Vector, b; TOL = 1e-10, maxnit = 5)
+   ξ1(x::Real, y::Real, b) = x - b * angle(x + im * y) / (2*π)
+   dξ1(x::Real, y::Real, b) = 1 + b * y / (x^2 + y^2) / (2*π)
+    y = Y[2]
+    x = y
+    for n = 1:maxnit
+        f = ξ1(x, y, b) - Y[1]
+        if abs(f) <= TOL; break; end
+        x = x - f / dξ1(x, y, b)
+    end
+    if abs(ξ1(x, y, b) - Y[1]) > TOL
+        warn("newton solver did not converge; returning input")
+        return Y
+    end
+    return [x, y]
+end
+
+
+function eoscorr(X::Matrix, b)
+   Xmod = zeros(X)
+   for n = 1:size(X,2)
+      Xmod[:, n] = xi_solver(X[:,n], b)
+   end
+   return Xmod
+end
+
+
 """
 `fcc_edge_geom(s::AbstractString, R::Float64) -> at::ASEAtoms`
 
@@ -79,7 +107,8 @@ core direction ν ∝ e₃
 """
 function fcc_edge_geom(s::AbstractString, R;
                        truncate=true, cle=:isotropic, ν=0.25, calc=nothing,
-                       TOL=1e-4,zDir=1)
+                       TOL=1e-4,zDir=1,
+                       eos_correction = false)
    # compute the correct unit cell
    atu, b, xcore, a = fcc_edge_plane(s)
    # multiply the cell to fit a ball of radius a/√2 * R inside
@@ -102,31 +131,36 @@ function fcc_edge_geom(s::AbstractString, R;
    print(" yc: ")
    print(yc)
    r² = (x-xc).^2 + (y-yc).^2
-   tip = minimum(r²)+.0000001 
+   tip = minimum(r²)+.0000001
    print(" minimum index : ")
-   print(find( tip .> r² .> 0 ))  
+   print(find( tip .> r² .> 0 ))
    print(" minimum : ")
    print( minimum(r²) )
-   
+
    I0 = find(  tip .> r² .> 0 )[2*zDir]
-   print(" I0 : ")
-   print(I0)
-   print(" X12[I0] : ")
-   print(X12[I0])
+   @show I0
+   @show X12[I0]
    xcore = X12[I0] + xcore
-   print("xcore : ")
-   print(xcore)
+   @show xcore
    x, y = x - xcore[1], y - xcore[2]
+
+   if eos_correction
+      Xmod = eoscorr([x'; y'], -b)
+      xmod, ymod = Xmod[1,:][:], Xmod[2,:][:]
+   else
+      xmod, ymod = x, y
+   end
+
    # compute the dislocation predictor
    if cle == :isotropic
-      ux, uy = u_edge_isotropic(x, y, b, ν)
+      ux, uy = u_edge_isotropic(xmod, ymod, b, ν)
    elseif cle == :anisotropic
       # TODO: this doesn't look clean; maybe we need to pass atu in the future
       # I'm not fully understanding how the function fcc_edge_plane(s) works
       set_pbc!(atu, true)
       atv = bulk("Al", cubic=true) * 4
       Cv = voigt_moduli(calc, atv)
-      ux, uy = u_edge(x, y, b, Cv, a, TOL=TOL)
+      ux, uy = u_edge(xmod, ymod, b, Cv, a, TOL=TOL)
    else
       error("unknown `cle`")
    end
@@ -161,12 +195,19 @@ This is to be used primarily for comparison, since the exact solution will
 not be the isotropic elasticity solution.
 """
 function u_edge_isotropic(x, y, b, ν)
-   x[y .< 0] += b/2
-   r² = x.^2 + y.^2
-   ux = b/(2*π) * ( atan(x ./ y) + (x .* y) ./ (2*(1-ν) * r²) )
-   uy = -b/(2*π) *( (1-2*ν)/(4*(1-ν)) * log(r²) + (y.^2 - x.^2) ./ (4*(1-ν) * r²) )
-   return ux, uy
+    r² = x.^2 + y.^2
+    ux = b/(2*π) * ( angle(x + im*y) + (x .* y) ./ (2*(1-ν) * r²) )
+    uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log(r²) + - 2 * y.^2 ./ (4*(1-ν) * r²) )
+    return [ux; uy]
 end
+
+# function u_edge_isotropic(x, y, b, ν)
+#    x[y .< 0] += b/2
+#    r² = x.^2 + y.^2
+#    ux = b/(2*π) * ( atan(x ./ y) + (x .* y) ./ (2*(1-ν) * r²) )
+#    uy = -b/(2*π) *( (1-2*ν)/(4*(1-ν)) * log(r²) + (y.^2 - x.^2) ./ (4*(1-ν) * r²) )
+#    return ux, uy
+# end
 
 
 u_edge{T}(x, y, b, C::Array{T,4}; TOL=1e-4) = u_edge(x, y, b, voigt_moduli(C), TOL=TOL)
@@ -207,7 +248,7 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4)
    #print(Cvoigt)
 
    #Compute Anisotropic solution from Chou and Sha, J. App. Phys 42 (7) 2625
-   #This uses the elasticity tensor in the usual coordinates.  
+   #This uses the elasticity tensor in the usual coordinates.
    #Note that the rotated tensor agrees with the values shown on 2625
    #Same problem as with Hirth and Lothe--either formulas are incorrect or problem
    #with numeric instability.  Complex log formulas seem to work
@@ -234,7 +275,7 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4)
 
    #Now compute using Hirth and Lothe which should be valid for 110 dislocation
    #This should use K instead of Cv
-   #Something seems to be either wrong with these formulas or numeric issues are arising 
+   #Something seems to be either wrong with these formulas or numeric issues are arising
    #Skip to general formula using complex logs
 
    K = fourth_order_basis(Cv,a)
@@ -247,7 +288,7 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4)
      ϕ = 0.5 * acos( (K[1,2]^2 + 2*K[1,2]*K[6,6] - c̄11^2) / (2.0*c̄11*K[6,6]) )
    #print("lambda: ")
    #print(lam)
-   #print(" phi : ") 
+   #print(" phi : ")
    #print(ϕ)
    apple = - lam*(K[6,6]*exp(im*ϕ) + c̄11*exp(-im*ϕ))/(K[1,2]+K[6,6])
    #print(" apple: ")
@@ -306,7 +347,7 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4)
 
    @assert isreal(ux)
    @assert isreal(uy)
-   
+
    return ux, uy
 end
 
@@ -319,7 +360,7 @@ straight dislocation line in direction ξ with burgers vector b and
 elastic moduli C.
 """
 function u_general(X, b, ξ, C::Array{Float64, 4})
-   
+
 end
 
 end
