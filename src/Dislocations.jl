@@ -142,13 +142,22 @@ burgers vector `b * [1.0;0.0]` and Poisson ratio `ν`
 This is to be used primarily for comparison, since the exact solution will
 not be the isotropic elasticity solution.
 """
-function u_edge_isotropic(x, y, b, ν)
-   x[y .< 0] += b/2
+function u_edge_isotropic(X, b, ν)
+   x, y = X[1,:], X[2,:]
    r² = x.^2 + y.^2
-   ux = b/(2*π) * ( atan(x ./ y) + (x .* y) ./ (2*(1-ν) * r²) )
-   uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log(r²) + (y.^2 - x.^2) ./ (4*(1-ν) * r²) )
-   return ux, uy
+   r = sqrt(r²)
+   ux = b/(2*π) * ( angle(x + im*y) + (x .* y) ./ (2*(1-ν) * r²) )
+   uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log(r²) + - 2 * y.^2 ./ (4*(1-ν) * r²) )
+   return [ux'; uy']
 end
+
+# function u_edge_isotropic(x, y, b, ν)
+#    x[y .< 0] += b/2
+#    r² = x.^2 + y.^2
+#    ux = b/(2*π) * ( atan(x ./ y) + (x .* y) ./ (2*(1-ν) * r²) )
+#    uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log(r²) + (y.^2 - x.^2) ./ (4*(1-ν) * r²) )
+#    return ux, uy
+# end
 
 
 u_edge{T}(x, y, b, C::Array{T,4}; TOL=1e-4) = u_edge(x, y, b, voigt_moduli(C), TOL=TOL)
@@ -224,7 +233,7 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}; TOL = 1e-4)
    # ux = - (b / 4*π) * ( atan( (2*x.*y*λ*sin(ϕ)) ./ (x.^2 - λ^2*y.^2) ) )
    #ux = - (b / 4*π) * ( atan( (2*x.*y) ./ (x.^2 - y.^2) ) ) #Anisotropic
 
-   
+
    #uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log(r²) + (y.^2 - x.^2) ./ (4*(1-ν) * r²) ) #Isotropic
    #uy = (λ*b/(4*π*c̄11)) * ( (c̄11 - Cv[1,2]) * (0.5 * log(q².*t²)) )
    #uy = (b/(4*π*c̄11)) * ( (c̄11 - Cv[1,2]) * (0.5 * log(q².*t²)) ) #Anisotropic
@@ -244,7 +253,7 @@ straight dislocation line in direction ξ with burgers vector b and
 elastic moduli C.
 """
 function u_general(X, b, ξ, C::Array{Float64, 4})
-   
+
 end
 
 end

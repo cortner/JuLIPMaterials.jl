@@ -1,0 +1,279 @@
+Hi Christoph
+
+In silicon I’ve looked mainly at crack-dislocation interaction, and I’ve not tried to do any elastic embedding with dislocations, so I’ve not needed the full CLE solution. This means the codes I’ve got are only for the isotropic case (e.g. isotropic stress field, attached), so I use these as an initial guess then relax with an interatomic potential.
+
+Here’s a reference for diamond (same crystal structure) which includes isotropic and anisotropic elasticity solutions and tight binding calculations for core structures:
+
+A. T. Blumenau, M. I. Heggie, C. J. Fall, R. Jones, and T. Frauenheim. Dislocations in diamond: Core structures and energies. Phys. Rev. B, 65(20):205205, May 2002. 8, 22, 110
+https://journals.aps.org/prb/abstract/10.1103/PhysRevB.65.205205
+
+James
+
+
+
+
+from numpy import *
+from pylab import *
+from matplotlib.mlab import griddata
+from quippy import Atoms
+
+GPA = 160.22 # 1 GPA in eV/A**3
+
+def disloc_sigma(x, y, b, mu, nu):
+    """
+    Stress field due to an edge dislocation aligned with x-axis
+
+    Parameters
+    ----------
+    x  : input array
+       x coordinates, in A. 1D or 2D array.
+    y  : input array
+       y coordinates, in A. 1D or 2D array.
+    b  : input float
+       Length of Burgers vector, aligned with positive x-axis.
+    mu : input float
+       Shear modulus, in eV/A**3.
+    nu : input float
+       Poisson ratio
+
+    Returns
+    -------
+    sigma : array, shape x.shape + (2,2)
+       Stress field components: sigma[...,0,0] is sigma_xx, etc.
+       Units are eV/A**3
+    """
+
+    t = mu*b/(2*pi*(1-nu))
+    sigma = zeros(x.shape + (2,2))
+    sigma[...,0,0] = -t*y*(3*x**2 + y**2)/(x**2 + y**2)**2
+    sigma[...,1,1] =  t*y*(x**2 - y**2)/(x**2 + y**2)**2
+    sigma[...,0,1] =  t*x*(x**2 - y**2)/(x**2 + y**2)**2
+    sigma[...,1,0] = sigma[...,0,1]
+    #sigma[...,2,2] = nu*(sigma[...,0,0] + sigma[...,1,1])
+    return sigma
+
+
+def disloc_sigma_rot(x, y, bx, by, mu, nu):
+    """
+    Stress field due to an edge dislocation with arbitrary orientation
+
+    Evaluated by rotating from (x, y) frame to a new frame (x', y') where
+    Burgers vector is aligned with x' axis, evaluating stress there with
+    :func:`disloc_sigma`, and then transforming stress tensor back to the
+    (x, y) frame.
+
+    Parameters
+    ----------
+    x  : input array
+       x coordinates, in A. 1D or 2D array.
+    y  : input array
+       y coordinates, in A. 1D or 2D array.
+    bx : input float
+       x-component of Burgers vector, in (x, y) frame
+    by : input float
+       y-component of Burgers vector, in (x, y) frame
+    mu : input float
+       Shear modulus, in eV/A**3.
+    nu : input float
+       Poisson ratio
+
+    Returns
+    -------
+    sigma : array, shape x.shape + (2,2)
+       Stress field components: sigma[...,0,0] is sigma_xx, etc.
+       Units are eV/A**3
+    """
+
+    # length of Burgers vector
+    b = sqrt(bx**2 + by**2)
+
+    # angle from x' axis to x axis
+    theta = -arctan2(by, bx)
+
+    # construct rotation matrix from (x', y') to (x, y)
+    R = np.array([[ cos(theta), sin(theta)],
+                  [-sin(theta), cos(theta)]])
+
+    # rotate coordinates from (x,y) to (x',y')
+    xp, yp = einsum('im,jkm', R.T, dstack([x, y]))
+
+    # evaluate stress field in (x', y'), where b is aligned with axis
+    sigma_p = disloc_sigma(xp, yp, b, mu, nu)
+
+    # rotate stress field back from (x', y') to (x, y)
+    sigma = einsum('ic,jd,abcd', R, R, sigma_p)
+    return sigma
+
+bx = -1.8101729199167687 # A
+by = -1.2799855467934005 # A
+
+#A = np.array([[ c**2, s**2,  2*s*c    ],
+#              [ s**2, c**2, -2*s*c    ],
+#              [-s*c,  s*c,   c**2-s**2]])
+
+#mu = 79.92       #shear modulus, GPa
+#nu = 0.28        #poisson's coefficient
+
+mu = 45.1/GPA     # eV/A**3
+nu = 0.44
+
+xi = linspace(-50, 50, 100)
+yi = linspace(-50, 50, 99) # different numbers of grid points along x and y to help spot bugs
+cont = linspace(-3,3,25,endpoint=True)
+X, Y = meshgrid(xi, yi)
+
+# first with the axis-aligned grid
+b = sqrt(bx**2 + by**2)
+sigma_p = disloc_sigma(X, Y, b, mu, nu)
+
+# top row of plot - stress field in (x', y'), using grid commensurate with (x', y') axes
+
+figure(2)
+clf()
+
+
+# subplot(431)
+# gca().set_aspect('equal')
+# contourf(X, Y, sigma_p[:,:,0,0]*GPA, cont, extend='both')
+# title(r"$\sigma'_{xx}(x',y')$")
+
+# subplot(432)
+# gca().set_aspect('equal')
+# contourf(X, Y, sigma_p[:,:,1,1]*GPA, cont, extend='both')
+# title(r"$\sigma'_{yy}(x',y')$")
+
+# subplot(433)
+# gca().set_aspect('equal')
+# contourf(X, Y, sigma_p[:,:,0,1]*GPA, cont, extend='both')
+# title(r"$\sigma'_{xy}(x',y')$")
+# colorbar()
+# draw()
+
+# middle row of plot - stress field in (x, y) frame, using grid commensurate with (x, y) axes
+
+sigmar = disloc_sigma_rot(X, Y, bx, by, mu, nu)
+
+subplot(437)
+gca().set_aspect('equal')
+contourf(X, Y, sigmar[:,:,0,0]*GPA, cont, extend='both')
+colorbar()
+title(r"$\sigma^\mathrm{cont}_{xx}$")
+
+subplot(438)
+gca().set_aspect('equal')
+contourf(X, Y, sigmar[:,:,1,1]*GPA, cont, extend='both')
+colorbar()
+title(r"$\sigma^\mathrm{cont}_{yy}$")
+
+subplot(439)
+gca().set_aspect('equal')
+contourf(X, Y, sigmar[:,:,0,1]*GPA, cont, extend='both')
+title(r"$\sigma^\mathrm{cont}_{xy}$")
+colorbar()
+draw()
+
+
+#disloc = Atoms('unstrained_disloc_relaxed.xyz')
+#far_field_stress = [0., -0.01, 0.]
+
+disloc = Atoms('disloc.xyz')
+core_pos = (disloc.pos[723] + disloc.pos[2152])/2.
+disloc.pos = (disloc.pos.T - core_pos).T
+far_field_stress = array([0.02995116, 0.05499615, 0.0])
+
+disloc.map_into_cell()
+mask = dot(disloc.g, disloc.pos)[3,:] > 0
+
+dx = np.array(disloc.pos[1,mask])
+dy = np.array(disloc.pos[2,mask])
+Sig_xx = np.array(disloc.Sig_xx[mask])
+Sig_yy = np.array(disloc.Sig_yy[mask])
+Sig_xy = np.array(disloc.Sig_xy[mask])
+
+sxx_atom = griddata(dx, dy, Sig_xx, xi, yi)
+syy_atom = griddata(dx, dy, Sig_yy, xi, yi)
+sxy_atom = griddata(dx, dy, Sig_xy, xi, yi)
+
+subplot(431)
+gca().set_aspect('equal')
+contourf(xi, yi, sxx_atom*GPA, cont + far_field_stress[0]*GPA, extend='both')
+colorbar()
+scatter(dx, dy, s=.1, c='k')
+title(r"$\sigma^\mathrm{atom}_{xx}$")
+xlim(-50,50)
+ylim(-50,50)
+
+
+subplot(432)
+gca().set_aspect('equal')
+contourf(xi, yi, syy_atom*GPA, cont + far_field_stress[1]*GPA, extend='both')
+colorbar()
+scatter(dx, dy, s=.1, c='k')
+title(r"$\sigma^\mathrm{atom}_{yy}$")
+xlim(-50,50)
+ylim(-50,50)
+
+subplot(433)
+gca().set_aspect('equal')
+contourf(xi, yi, sxy_atom*GPA, cont + far_field_stress[2]*GPA, extend='both')
+colorbar()
+scatter(dx, dy, s=.1, c='k')
+title(r"$\sigma^\mathrm{atom}_{xy}$")
+xlim(-50,50)
+ylim(-50,50)
+
+
+subplot(434)
+gca().set_aspect('equal')
+contourf(xi, yi, (sxx_atom-far_field_stress[0])*GPA, cont, extend='both')
+title(r"$\sigma^\mathrm{atom}_{xx} - \sigma^0_{xx}$")
+xlim(-50,50)
+ylim(-50,50)
+colorbar()
+
+subplot(435)
+gca().set_aspect('equal')
+contourf(xi, yi, (syy_atom-far_field_stress[1])*GPA, cont, extend='both')
+colorbar()
+title(r"$\sigma^\mathrm{atom}_{yy} - \sigma^0_{yy}$")
+xlim(-50,50)
+ylim(-50,50)
+
+subplot(436)
+gca().set_aspect('equal')
+contourf(xi, yi, (sxy_atom-far_field_stress[2])*GPA, cont, extend='both')
+title(r"$\sigma^\mathrm{atom}_{xy} - \sigma^0_{xy}$")
+xlim(-50,50)
+ylim(-50,50)
+colorbar()
+
+cont_sigma = disloc_sigma_rot(dx, dy, bx, by, mu, nu)[0,...]
+
+subplot(4,3,10)
+gca().set_aspect('equal')
+contourf(xi, yi, (sxx_atom-far_field_stress[0]-sigmar[:,:,0,0])*GPA, cont, extend='both')
+colorbar()
+title(r"$(\sigma^\mathrm{atom}_{xx} - \sigma^0_{xx}) - \sigma^\mathrm{cont}_{xx}$")
+xlim(-50,50)
+ylim(-50,50)
+
+subplot(4,3,11)
+gca().set_aspect('equal')
+contourf(xi, yi, (syy_atom-far_field_stress[1]-sigmar[:,:,1,1])*GPA, cont, extend='both')
+colorbar()
+title(r"$(\sigma^\mathrm{atom}_{yy} - \sigma^0_{yy}) - \sigma^\mathrm{cont}_{yy}$")
+xlim(-50,50)
+ylim(-50,50)
+
+subplot(4,3,12)
+gca().set_aspect('equal')
+contourf(xi, yi, (sxy_atom-far_field_stress[2]-sigmar[:,:,0,1])*GPA, cont, extend='both')
+colorbar()
+title(r"$(\sigma^\mathrm{atom}_{xy} - \sigma^0_{xy}) - \sigma^\mathrm{cont}_{xy}$")
+xlim(-50,50)
+ylim(-50,50)
+
+draw()
+
+subplots_adjust(0.03, 0.03, 0.97, 0.97, 0, 0.20)
+savefig('disloc-stress-fields-strained.pdf')

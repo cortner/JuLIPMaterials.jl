@@ -5,26 +5,6 @@ using JuLIP
 using JuLIP.ASE
 using MaterialsScienceTools.Elasticity_110: elastic_moduli, voigt_moduli, fourth_order_basis, sextic_roots, A_coefficients, D_coefficients, little_a
 
-const Afcc = JMatF([ 0.0 1 1; 1 0 1; 1 1 0])
-
-"""
-ensure that species S actually crystallises to FCC
-"""
-function check_fcc(S::AbstractString)
-   F = defm(bulk(S))
-   @assert vecnorm(F/F[1,2] - Afcc) < 1e-12
-end
-
-const Abcc = JMatF([ -1.0 1 1; 1 -1 1; 1 1 -1])
-
-"""
-ensure that species S actually crystallises to BCC
-"""
-function check_bcc(S::AbstractString)
-   F = defm(bulk(S))
-   return vecnorm(F/F[1,2] - Abcc) < 1e-12
-end
-
 
 """
 `fcc_edge_plane(s::AbstractString) -> at::ASEAtoms, b, xcore `
@@ -188,7 +168,7 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4)
    #print(Cvoigt)
 
    #Compute Anisotropic solution from Chou and Sha, J. App. Phys 42 (7) 2625
-   #This uses the elasticity tensor in the usual coordinates.  
+   #This uses the elasticity tensor in the usual coordinates.
    #Note that the rotated tensor agrees with the values shown on 2625
 
    bar = sqrt( .5*Cv[1,1]*(Cv[1,1] +Cv[1,2] + 2.0*Cv[4,4]) )
@@ -225,7 +205,7 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4)
      ϕ = 0.5 * acos( (K[1,2]^2 + 2*K[1,2]*K[6,6] - c̄11^2) / (2.0*c̄11*K[6,6]) )
    #print("lambda: ")
    #print(lam)
-   #print(" phi : ") 
+   #print(" phi : ")
    #print(ϕ)
    apple = - lam*(K[6,6]*exp(im*ϕ) + c̄11*exp(-im*ϕ))/(K[1,2]+K[6,6])
    #print(" apple: ")
@@ -284,7 +264,7 @@ function u_edge{T}(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4)
 
    @assert isreal(ux)
    @assert isreal(uy)
-   
+
    return ux, uy
 end
 
@@ -297,7 +277,7 @@ straight dislocation line in direction ξ with burgers vector b and
 elastic moduli C.
 """
 function u_general(X, b, ξ, C::Array{Float64, 4})
-   
+
 end
 
 end

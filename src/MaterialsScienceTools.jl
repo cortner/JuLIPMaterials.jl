@@ -8,6 +8,8 @@ include("Elasticity_110.jl")
 
 include("Dislocations.jl")
 
+include("Silicon.jl")
+
 include("Dislocations_Silicon_hard.jl")
 
 include("Dislocations_Silicon_hard_110.jl")
