@@ -4,13 +4,21 @@ include("Elasticity.jl")
 
 include("Elasticity_110.jl")
 
+include("Elasticity_110_multi.jl")
+
 include("Dislocations.jl")
 
 include("Dislocations_Silicon_hard.jl")
 
 include("Dislocations_Silicon_hard_110.jl")
 
+include("Dislocations_Silicon_hard_110_new.jl")
+
+include("Dislocations_Silicon_hard_110_old.jl")
+
 include("Dislocations_Al_hard_110.jl")
+
+include("Dislocations_Al_multi_110.jl")
 
 include("no_dislocation.jl")
 
