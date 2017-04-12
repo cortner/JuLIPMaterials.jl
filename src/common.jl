@@ -1,6 +1,12 @@
 
 using JuLIP
 
+export dists, cluster, strains 
+
+dists{T}(X::AbstractArray{T}, dims) = [vecnorm(x[dims]) for x in X]
+
+dists{T}(X::AbstractArray{T}, dims::Tuple) = dists(X, [dims...])
+
 dists{T}(X::AbstractArray{T}, y::T, dims) = [vecnorm(x[dims] - y[dims]) for x in X]
 
 dists{T}(X::AbstractArray{T}, y::T, dims::Tuple) = dists(X, y, [dims...])
@@ -77,3 +83,10 @@ function cluster(species::AbstractString, R::Real; kwargs...)::AbstractAtoms
    atu = JuLIP.ASE.bulk(species, cubic=true, pbc = false)
    return cluster(atu, R; kwargs...)
 end
+
+"""
+`strains(U, at; rcut = cutoff(calculator(at)))`
+"""
+strains(U, at; rcut = cutoff(calculator(at))) =
+   [ maximum(norm(u - U[i]) / s for (u, s) in zip(U[j], r))
+                           for (i, j, r, _1, _2) in sites(at, rcut) ]
