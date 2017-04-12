@@ -18,6 +18,8 @@ include("Dislocations_Al_hard_110.jl")
 
 include("no_dislocation.jl")
 
+include("BCC.jl")
+
 include("TriangularLattice.jl")
 
 include("PointDefects.jl")

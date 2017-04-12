@@ -5,22 +5,33 @@ dists{T}(X::AbstractArray{T}, y::T, dims) = [vecnorm(x[dims] - y[dims]) for x in
 
 dists{T}(X::AbstractArray{T}, y::T, dims::Tuple) = dists(X, y, [dims...])
 
-
 """
-`cluster(species::AbstractString, R::Real; dims=(1,2,3)) -> at::AbstractAtoms`
+`cluster(args...; kwargs...) -> at::AbstractAtoms`
 
 Produce a circular / spherical cluster of approximately radius R. The center atom is
 always at index 1 and position 0
 
+## Methods
+```
+cluster(species::AbstractString, R::Real; dims=(1,2,3))
+cluster(atu::AbstractAtoms, R::Real; dims = (1,2,3))
+```
+The second method assumes that there is only a single species.
+
+## Parameters
 * `species`: atom type
 * `R` : radius
 * `dims` : dimension into which the cluster is extended, typically
    `(1,2,3)` for 3D point defects and `(1,2)` for 2D dislocations, in the
    remaining dimension(s) the b.c. will be periodic.
+
+## TODO
+ * lift the restriction of single species
+ * allow other shapes
 """
-function cluster(species::AbstractString, R::Real; dims=(1,2,3))::AbstractAtoms
-   # create a cubic cell
-   atu = JuLIP.ASE.bulk(species, cubic=true, pbc = false)
+function cluster(atu::AbstractAtoms, R::Real; dims = (1,2,3))::AbstractAtoms
+   @assert isdiag(defm(atu))
+   species = JuLIP.ASE.chemical_symbols(atu)[1]
    # check that the cell is orthorombic
    Fu = defm(atu)
    X = positions(atu)
@@ -58,4 +69,11 @@ function cluster(species::AbstractString, R::Real; dims=(1,2,3))::AbstractAtoms
    set_pbc!(at_cluster, tuple(pbcs...))
    # return the cluster and the index of the center atom
    return at_cluster
+end
+
+
+function cluster(species::AbstractString, R::Real; kwargs...)::AbstractAtoms
+   # create a cubic cell
+   atu = JuLIP.ASE.bulk(species, cubic=true, pbc = false)
+   return cluster(atu, R; kwargs...)
 end

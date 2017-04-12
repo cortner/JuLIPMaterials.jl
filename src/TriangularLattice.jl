@@ -1,4 +1,9 @@
 
+"""
+`module TriangularLattice`
+
+The triangular lattice primarily serves as a useful toy model.
+"""
 module TriangularLattice
 
 using JuLIP
