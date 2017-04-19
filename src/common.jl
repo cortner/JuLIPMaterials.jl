@@ -1,7 +1,7 @@
 
 using JuLIP
 
-export dists, cluster, strains 
+export dists, cluster, strains
 
 dists{T}(X::AbstractArray{T}, dims) = [vecnorm(x[dims]) for x in X]
 
@@ -86,6 +86,8 @@ end
 
 """
 `strains(U, at; rcut = cutoff(calculator(at)))`
+
+maximum strains maximum( du/dr over all neighbours ) at each atom.
 """
 strains(U, at; rcut = cutoff(calculator(at))) =
    [ maximum(norm(u - U[i]) / s for (u, s) in zip(U[j], r))
