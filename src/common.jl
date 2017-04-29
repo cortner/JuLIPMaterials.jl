@@ -45,20 +45,15 @@ function cluster(atu::AbstractAtoms, R::Real; dims = (1,2,3))::AbstractAtoms
    # determine by how much to multiply in each direction
    L = [1, 1, 1]
    for j in dims
-      L[j] = ceil(Int, R/Fu[j,j])+3
+      L[j] = 2 * (ceil(Int, R/Fu[j,j])+3)
    end
    # multiply
    at = atu * tuple(L...)
-   # and make copies to make it symmetric about the origin
-   X = positions(at)
-   E = eye(3) |> vecs
-   for j in dims
-      J = eye(3); J[j, j] = -1; J = JMatF(J)
-      Xcopy = [x - L[j] * Fu[j,j] * E[j] for x in X]
-      X = [X; Xcopy]   # unique([X; Xreflect])
-   end
-   F = 2 * Fu
-   @assert norm(X[1]) == 0.0   # double-check that the centre is still at 0
+   # and shift + swap positions
+   X = [x - (Fu * floor.(L/2)) for x in positions(at)]
+   i0 = find(norm.(X) .< 1e-10)[1]
+   X[1], X[i0] = X[i0], X[1]
+   F = diagm([Fu[j,j]*L[j] for j = 1:3])
    # carve out a cluster with mini-buffer to account for round-off
    r = dists(X, X[1], dims)
    IR = find( r .<= R+sqrt(eps()) )

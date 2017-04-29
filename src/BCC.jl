@@ -48,10 +48,7 @@ function screw_111(s::AbstractString, R::Float64; x0 = :center, layers=1)::Abstr
    X = positions(at) |> mat
    x, y = X[1,:] - x0[1], X[2,:] - x0[2]
    # get the screw displacement (Burgers vector = (0, 0, a0))
-   # u = u_screw(x, y, a0)
-   # u = cos(angle(x + im * y)) ./ sqrt(x.^2 + y.^2)
-   u = (1 + x.^2 + y.^2).^(-1)
-   # u = zeros(x)
+   u = u_screw(x, y, a0)
    # apply to `at` and return
    X[1, :] = x
    X[2, :] = y
