@@ -36,7 +36,6 @@ The second method assumes that there is only a single species.
  * allow other shapes
 """
 function cluster(atu::AbstractAtoms, R::Real; dims = (1,2,3))::AbstractAtoms
-   @assert isdiag(defm(atu))
    species = JuLIP.ASE.chemical_symbols(atu)[1]
    # check that the cell is orthorombic
    Fu = defm(atu)
@@ -50,15 +49,15 @@ function cluster(atu::AbstractAtoms, R::Real; dims = (1,2,3))::AbstractAtoms
    end
    # multiply
    at = atu * tuple(L...)
-   # and reflect to make it symmetric about the origin
-   F = Matrix(defm(at))
+   # and make copies to make it symmetric about the origin
    X = positions(at)
+   E = eye(3) |> vecs
    for j in dims
       J = eye(3); J[j, j] = -1; J = JMatF(J)
-      Xreflect = [J * x for x in X]
-      X = unique([X; Xreflect])
-      F[j, j] *= 2
+      Xcopy = [x - L[j] * Fu[j,j] * E[j] for x in X]
+      X = [X; Xcopy]   # unique([X; Xreflect])
    end
+   F = 2 * Fu
    @assert norm(X[1]) == 0.0   # double-check that the centre is still at 0
    # carve out a cluster with mini-buffer to account for round-off
    r = dists(X, X[1], dims)

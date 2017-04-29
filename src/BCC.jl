@@ -39,7 +39,7 @@ function screw_111(s::AbstractString, R::Float64; x0 = :center, layers=1)::Abstr
    a0, b0, c0 = lattice_constants_111(s)
    if (x0 == :center) || (x0 == :centre)
       # center of mass of a triangle. (the z coordinate is irrelevant!)
-      x0 = JVecF( ([b0, 0, 0] + [b0/2, c0, 0]) / 3 )
+      x0 = JVecF( ([b0, 0, a0/3] + [b0/2, c0, 2*a0/3]) / 3 )
    end
    # create a cluster
    at = cluster(cell_111(s), R, dims=(1,2))
@@ -48,7 +48,10 @@ function screw_111(s::AbstractString, R::Float64; x0 = :center, layers=1)::Abstr
    X = positions(at) |> mat
    x, y = X[1,:] - x0[1], X[2,:] - x0[2]
    # get the screw displacement (Burgers vector = (0, 0, a0))
-   u = u_screw(x, y, a0)
+   # u = u_screw(x, y, a0)
+   # u = cos(angle(x + im * y)) ./ sqrt(x.^2 + y.^2)
+   u = (1 + x.^2 + y.^2).^(-1)
+   # u = zeros(x)
    # apply to `at` and return
    X[1, :] = x
    X[2, :] = y
