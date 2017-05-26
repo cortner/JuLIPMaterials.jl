@@ -24,4 +24,7 @@ include("TriangularLattice.jl")
 
 include("PointDefects.jl")
 
+
+include("stevecubic.jl")
+
 end # module

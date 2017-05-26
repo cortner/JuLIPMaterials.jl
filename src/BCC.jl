@@ -35,7 +35,8 @@ Construct a circular cluster with a screw dislocation in the centre.
 * `R`: radius of cluster
 * `x0`: position of screw dislocation core, relative to a lattice site
 """
-function screw_111(s::AbstractString, R::Float64; x0 = :center, layers=1)::AbstractAtoms
+function screw_111(s::AbstractString, R::Float64;
+            x0 = :center, layers=1, soln = :antiplane)::AbstractAtoms
    a0, b0, c0 = lattice_constants_111(s)
    x00 = JVecF( ([b0, 0, a0/3] + [b0/2, c0, 2*a0/3]) / 3 )
    if (x0 == :center) || (x0 == :centre)
@@ -54,14 +55,35 @@ function screw_111(s::AbstractString, R::Float64; x0 = :center, layers=1)::Abstr
    set_info!(at, :X0, copy(X))
    # get coordinates for the dislocation predictor
    x, y = X[1,:] - x0[1], X[2,:] - x0[2]
+
    # get the screw displacement (Burgers vector = (0, 0, a0))
-   u = u_screw(x, y, a0)
-   # apply to `at` and return
-   # X[1, :] = X0[1,:]
-   # X[2, :] = X0[2,:]
-   X[3, :] += u
+   if soln == :antiplane
+      u = u_screw(x, y, a0)
+      # apply to `at` and return
+      # X[1, :] = X0[1,:]
+      # X[2, :] = X0[2,:]
+      X[3, :] += u
+   elseif soln == :vectorial
+      z = X0[3,:]
+      u = u_screw_vectorial(x, y, z, a0)
+      X[:, :] += u
+   else
+      error("unknown `soln`")
+   end
+
    set_positions!(at, X)
    return at
 end
+
+
+
+
+function u_screw_vectorial(x, y, z, a0)
+   
+end
+
+
+
+
 
 end
