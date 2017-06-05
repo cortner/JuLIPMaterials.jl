@@ -4,16 +4,24 @@ module BCC
 using MaterialsScienceTools: cluster
 using JuLIP, JuLIP.ASE
 
-function lattice_constants_111(s::AbstractString)
-   a0 = rnn(s)
+function lattice_constants_111(s::AbstractString; calc = nothing)
+   if calc == nothing
+      a0 = rnn(s)
+   else
+      at0 = bulk(s, cubic=true, pbc=true)
+      set_constraint!(at0, VariableCell(at0))
+      set_calculator!(at0, calc)
+      minimise!(at0, verbose=0)
+      a0 = sqrt(3)/2 * cell(at0)[1,1]
+   end
    b0 = sqrt(8/9) * a0   # b0^2 + (a0/3)^2 = a0^2
    c0 = sqrt(3/4) * b0   # (b0/2)^2 + c0^2 = b0^2
    return a0, b0, c0
 end
 
 
-function cell_111(s::AbstractString)
-   a0, b0, c0 = lattice_constants_111(s)
+function cell_111(s::AbstractString; calc=nothing)
+   a0, b0, c0 = lattice_constants_111(s, calc=calc)
    X = [ [0.0, 0.0, 0.0] [b0, 0.0, a0/3] [2*b0, 0.0, 2*a0/3] [b0/2, c0, 2*a0/3] [3*b0/2, c0, 0.0] [5*b0/2, c0, a0/3] ] |> vecs
    F = diagm([3*b0, 2*c0, a0])
    at = ASEAtoms("$s$(length(X))")
@@ -36,8 +44,8 @@ Construct a circular cluster with a screw dislocation in the centre.
 * `x0`: position of screw dislocation core, relative to a lattice site
 """
 function screw_111(s::AbstractString, R::Float64;
-            x0 = :center, layers=1, soln = :antiplane)::AbstractAtoms
-   a0, b0, c0 = lattice_constants_111(s)
+            x0 = :center, layers=1, soln = :antiplane, calc = nothing)::AbstractAtoms
+   a0, b0, c0 = lattice_constants_111(s; calc=calc)
    x00 = JVecF( ([b0, 0, a0/3] + [b0/2, c0, 2*a0/3]) / 3 )
    if (x0 == :center) || (x0 == :centre)
       # center of mass of a triangle. (the z coordinate is irrelevant!)
@@ -79,7 +87,7 @@ end
 
 
 function u_screw_vectorial(x, y, z, a0)
-   
+
 end
 
 

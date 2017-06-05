@@ -4,6 +4,8 @@ include("common.jl")
 
 include("Elasticity.jl")
 
+include("GreensFunctions.jl")
+
 include("Elasticity_110.jl")
 
 include("Dislocations.jl")
@@ -23,7 +25,6 @@ include("BCC.jl")
 include("TriangularLattice.jl")
 
 include("PointDefects.jl")
-
 
 include("stevecubic.jl")
 
