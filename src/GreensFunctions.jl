@@ -31,13 +31,18 @@ inv3x3(A) = inv( SMatrix{3,3}(A) )
 Computes the full 3D Green tensor, G, and its gradient, DG, at the point x for elasticity
 tensor ℂ ∈ ℝ³ˣ³ˣ³ˣ³, based on using quadpts quadrature points on a circle.
 """
-function GreenTensor3D{T}(x::AbstractVector{T}, ℂ, quadpts=10)
+function GreenTensor3D{T}(x::AbstractVector{T}, ℂ, quadpts=10;
+                           remove_singularity = true)
     # Some basic error handling which should be redone with types.
     if ~( size(x)==(3,) ) && ~( size(x)==(3,1) )
         error("Input is not a 3D column vector")
     elseif ~( size(ℂ)==(3,3,3,3) )
         error("Elasticity tensor incorrect size")
     end
+
+    if remove_singularity && norm(x) < 1e-10
+      return zeros(T, 3, 3)
+   end
 
     # Initialise tensors.
     G = zeros(T,3,3)

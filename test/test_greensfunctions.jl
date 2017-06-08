@@ -31,7 +31,7 @@ function cleforce(x, u, C)
 end
 
 println("------------------------------------------------------------")
-println("Testing the 3D Anisotropic Green's Function Implementation")
+println(" Testing the 3D Anisotropic Green's Function Implementation")
 println("------------------------------------------------------------")
 
 print("check that conversion between spherical and euclidean is accurate: ")
@@ -78,9 +78,31 @@ maxerr = 0.0
 for n = 1:10
    a = rand(3) - 0.5
    a = a / norm(a)
-   u = x_ -> GR.GreenTensor3D(x_, C)[1] * a
+   u = x_ -> GR.GreenTensor3D(x_, C, 10)[1] * a
    x = (rand(3) - 0.5) * 10.0
    maxerr = max( norm(cleforce(x, u, C) * norm(x)^3, Inf), maxerr )
 end
 println("maxerr = $maxerr")
 @test maxerr < 1e-12
+
+
+Cvoigt = [ 3.0 1.5 1.5 0.0 0.0 0.0
+           1.5 3.0 1.5 0.0 0.0 0.0
+           1.5 1.5 3.0 0.0 0.0 0.0
+           0.0 0.0 0.0 1.2 0.0 0.0
+           0.0 0.0 0.0 0.0 1.2 0.0
+           0.0 0.0 0.0 0.0 0.0 1.2 ]
+
+Cvoigt = Cvoigt + 0.1 * rand(Cvoigt)
+Cvoigt = 0.5 * (Cvoigt + Cvoigt')
+C = EL.elastic_moduli(Cvoigt)
+
+
+println("Convergence of G with random C: ")
+maxerr = 0.0
+x = (rand(3) - 0.5) * 3.0
+G0 = GR.GreenTensor3D(x, C, 20)[1]
+for nquad in (1, 2, 4, 6, 8, 10)
+   println("nquad = $nquad => err = ",
+         vecnorm(G0 - GR.GreenTensor3D(x, C, nquad)[1]) )
+end
