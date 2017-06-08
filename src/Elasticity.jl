@@ -60,6 +60,30 @@ const voigtinds = [1, 5, 9, 4, 7, 8]
 
 voigt_moduli{T}(C::Array{T,4}) = reshape(C, 9, 9)[voigtinds, voigtinds]
 
+# # convert voigt to 3 x 3 x 3 x 3
+# function elastic_moduli{T}(Cv::AbstractMatrix{T})
+#    @assert size(Cv) == (6,6)
+#    C = zeros(T, 9,9)
+#    C[voigtinds, voigtinds] = Cv
+#    C = reshape(C, 3,3,3,3)
+#    # now apply all the symmetries
+#    for i = 1:3, a = 1:3, j = 1:3, b = 1:3
+#       if C[i,a,j,b] != 0
+#
+#          C[
+#       end
+#    end
+#
+#
+# end
+
+
+function isotropic_moduli(λ, μ)
+   K = λ + μ * 2 / 3
+   C = [ K * I[i,j] * I[k,l] + μ * (I[i,k]*I[j,l] + I[i,l]*I[j,k] - 2/3*I[i,j]*I[k,l])
+         for i = 1:3, j = 1:3, k = 1:3, l = 1:3 ]
+   return C
+end
 
 
 function four_to_two_index(i, j)
