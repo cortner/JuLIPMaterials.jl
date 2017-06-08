@@ -60,22 +60,21 @@ const voigtinds = [1, 5, 9, 4, 7, 8]
 
 voigt_moduli{T}(C::Array{T,4}) = reshape(C, 9, 9)[voigtinds, voigtinds]
 
-# # convert voigt to 3 x 3 x 3 x 3
-# function elastic_moduli{T}(Cv::AbstractMatrix{T})
-#    @assert size(Cv) == (6,6)
-#    C = zeros(T, 9,9)
-#    C[voigtinds, voigtinds] = Cv
-#    C = reshape(C, 3,3,3,3)
-#    # now apply all the symmetries
-#    for i = 1:3, a = 1:3, j = 1:3, b = 1:3
-#       if C[i,a,j,b] != 0
-#
-#          C[
-#       end
-#    end
-#
-#
-# end
+# convert voigt to 3 x 3 x 3 x 3
+function elastic_moduli{T}(Cv::AbstractMatrix{T})
+   @assert size(Cv) == (6,6)
+   C = zeros(T, 9,9)
+   C[voigtinds, voigtinds] = Cv
+   C = reshape(C, 3,3,3,3)
+   # now apply all the symmetries to recover C
+   for i = 1:3, a = 1:3, j = 1:3, b = 1:3
+      if C[i,a,j,b] != 0
+         C[a,i,j,b] = C[i,a,b,j] = C[a,i,b,j] = C[j,b,i,a] =
+            C[b,j,i,a] = C[j,b,a,i] = C[b,j,a,i] = C[i,a,j,b]
+      end
+   end
+   return C
+end
 
 
 function isotropic_moduli(λ, μ)

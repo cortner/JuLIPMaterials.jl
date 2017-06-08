@@ -8,36 +8,15 @@ BCC = MST.BCC
 EL = MST.Elasticity
 GR = MST.GreensFunctions
 
-"construct an EAM potential for W (tungsten)"
-function EAMW()
-    data = Pkg.dir("JuLIP") * "/data/"
-    return JuLIP.Potentials.FinnisSinclair(data*"W-pair-Wang-2014.plt",
-                                           data*"W-e-dens-Wang-2014.plt")
-end
 
-function unitcell()
-    at0 = bulk("W", cubic=true, pbc = true)
-    set_calculator!(at0, EAMW())
-   #  set_constraint!(at0, VariableCell(at0))
-   #  JuLIP.Solve.minimise!(at0)
-   #  set_constraint!(at0, FixedCell(at0))
-    return at0
-end
+Cvoigt = [ 3.0 1.5 1.5 0.0 0.0 0.0
+           1.5 3.0 1.5 0.0 0.0 0.0
+           1.5 1.5 3.0 0.0 0.0 0.0
+           0.0 0.0 0.0 1.2 0.0 0.0
+           0.0 0.0 0.0 0.0 1.2 0.0
+           0.0 0.0 0.0 0.0 0.0 1.2 ]
 
-at0 = unitcell()
-C = EL.elastic_moduli(at0)
-C = round(C, 9)
-
-Cv = MaterialsScienceTools.Elasticity.voigt_moduli(C)
-
-# Cvoigt = [ 3.0 1.5 1.5 0.0 0.0 0.0
-#            1.5 3.0 1.5 0.0 0.0 0.0
-#            1.5 1.5 3.0 0.0 0.0 0.0
-#            0.0 0.0 0.0 1.2 0.0 0.0
-#            0.0 0.0 0.0 0.0 1.2 0.0
-#            0.0 0.0 0.0 0.0 0.0 1.2 ]
-#
-# C = EL.elastic_moduli(Cvoigt)
+C = EL.elastic_moduli(Cvoigt)
 
 ∷(C::Array{Float64, 3}, F::Matrix) = reshape(C, 3, 9) * F[:]
 
@@ -51,6 +30,9 @@ function cleforce(x, u, C)
     return JVecF(f)
 end
 
+println("------------------------------------------------------------")
+println("Testing the 3D Anisotropic Green's Function Implementation")
+println("------------------------------------------------------------")
 
 print("check that conversion between spherical and euclidean is accurate: ")
 maxerr = 0.0
