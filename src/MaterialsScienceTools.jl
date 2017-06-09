@@ -1,5 +1,7 @@
 module MaterialsScienceTools
 
+include("bbs.jl")
+
 include("common.jl")
 
 include("Elasticity.jl")
@@ -27,5 +29,7 @@ include("TriangularLattice.jl")
 include("PointDefects.jl")
 
 include("stevecubic.jl")
+
+
 
 end # module

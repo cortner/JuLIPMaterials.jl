@@ -2,28 +2,10 @@
 module GreensFunctions
 
 using StaticArrays
+using MaterialsScienceTools.BBS: spherical, onb, inv3x3
 
 typealias Vec3{T} SVector{3, T}
 
-# extend `angle` to avoid going via C
-Base.angle(x, y) = Base.angle(x + im * y)   # atan2(y, x)
-
-"convert normalised vector to spherical coordinates"
-spherical(x) = angle(x[1], x[2]), angle(norm(x[1:2]), x[3])
-
-"convert spherical to euclidean coordinates on the unit sphere"
-euclidean(φ, ψ) = Vec3(cos(ψ) * cos(φ), cos(ψ) * sin(φ), sin(ψ))
-
-"given a vector x ∈ R³, return `(z0, z1)` where `(x/norm(x),z0,z1)` form an ONB."
-function onb{T}(x::Vec3{T})
-   x /= norm(x)
-   φ, ψ = spherical(x)
-   return Vec3{T}(-sin(φ), cos(φ), 0.0),
-          Vec3{T}(sin(ψ)*cos(φ), sin(ψ)*sin(φ), -cos(ψ))
-end
-
-"explicit inverse to enable AD, if A is an `SMatrix` then the conversion is free"
-inv3x3(A) = inv( SMatrix{3,3}(A) )
 
 
 """
