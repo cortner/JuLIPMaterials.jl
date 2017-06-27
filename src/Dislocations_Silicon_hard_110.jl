@@ -23,7 +23,7 @@ Returns
 """
 function fcc_edge_plane(s::AbstractString)
    # ensure s is actually an FCC species
-   check_fcc(s)
+   # check_fcc(s)
    # get the cubic unit cell dimension
    a = ( bulk(s, cubic=true) |> defm )[1,1]
    #print(a)
