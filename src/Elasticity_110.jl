@@ -1,10 +1,11 @@
 
 module Elasticity_110
-
-using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
-         stress, defm, set_defm!
-
-
+ 
+#using JuLIP: AbstractAtoms, AbstractCalculator, calculator, stress, defm, set_defm!  
+using JuLIP
+using JuLIP.ASE
+using JuLIP.Potentials
+using JuLIP.Constraints
 typealias Tensor{T} Array{T,4}
 
 """
@@ -344,6 +345,152 @@ end
 #    λ, μ = lame_parameters(C)
 #    return 0.5 * λ / (λ + μ)
 # end
+
+
+#ξ1(x::Array{Float64,1}, y::Array{Float64,1}) = x - angle(x + im * y) / (2*π)
+#dξ1(x::Array{Float64,1}, y::Array{Float64,1}) = 1 + y / (x.^2 + y.^2) / (2*π)
+
+function xi_solver(Y::Vector; TOL = 1e-12, maxnit = 1000)
+    lengthY = length(Y[2])
+    y = zeros(lengthY)
+    x = zeros(lengthY)
+    #y = Y[2]
+    #x = Y[1]
+    f = zeros(lengthY)
+    for nnn = 1:lengthY
+        x[nnn] = Y[1][nnn]
+        y[nnn] = Y[2][nnn]
+    	angle0_2Pi = angle(x[nnn] + im * y[nnn])
+        #if angle0_2Pi < 0
+	#	angle0_2Pi += 2*π
+	#end
+	for n = 1:maxnit
+        	f[nnn] = x[nnn] - 4.05*sqrt(2)/2*angle0_2Pi / (2*π) - Y[1][nnn]
+        	if abs(f[nnn]) <= TOL; break; end
+        	x[nnn] = x[nnn] - f[nnn] / (  1 + (y[nnn] / (x[nnn]^2 + y[nnn]^2)) / (2*π)  )
+    	end
+    	if abs(x[nnn] - 4.05*sqrt(2)/2*angle0_2Pi / (2*π) - Y[1][nnn]) > TOL
+        	warn("newton solver did not converge; returning input")
+                print(" error ")
+                print(abs(x[nnn] - angle(x[nnn] + im * y[nnn]) / (2*π) - Y[1][nnn]))
+        	#return Y
+        end
+    end
+    return [x, y]
+end
+
+
+"a fully equilibrated SW potential"
+function sw_eq()
+    T(σ, at) = trace(stress(StillingerWeber(σ=σ), at))
+    at = JuLIP.ASE.bulk("Si", pbc=true)
+    r0 = 2.0951
+    r1 = r0 - 0.1 
+    s0, s1 = T(r0, at), T(r1, at)
+    while (abs(s1) > 1e-8) && abs(r0 - r1) > 1e-8
+        rnew = (r0 * s1 - r1 * s0) / (s1 - s0)
+        r0, r1 = r1, rnew
+        s0, s1 = s1, T(rnew, at)
+    end
+    return StillingerWeber(σ=r1)
+end 
+
+
+function DpWcb(F, p, at = bulk("Si", pbc=true), sw = sw_eq())
+    set_defm!(at, F)
+    X = positions(at)
+    X[2] = X[1] + p
+    set_positions!(at, X)
+    @show -forces(sw, at)[2]
+    return -forces(sw, at)[2]
+end
+
+
+function DpDpWcb()
+    at = bulk("Si", pbc=true)
+    sw = sw_eq()
+    F0 = defm(at)
+    p0 = positions(at)[2] |> Vector
+    h = 1e-5
+    DpDpW = zeros(3, 3)
+    for i = 1:3 
+        p0[i] += h 
+        DpW1 = DpWcb(F0, JVecF(p0), at, sw)
+        p0[i] -= 2*h 
+        DpW2 = DpWcb(F0, JVecF(p0), at, sw)
+        p0[i] += h
+        DpDpW[:, i] = (DpW1 - DpW2) / (2*h)
+    end 
+    return 0.5 * (DpDpW + DpDpW')
+end
+
+
+function DpDFWcb()
+    at = bulk("Si", pbc=true)
+    sw = sw_eq()
+    #F0 = defm(at)
+    F0 = defm(at) |> Matrix
+    @show F0
+    p0 = positions(at)[2] |> Vector
+    h = 1e-5
+    DpDFW = zeros(3, 9)
+    for i = 1:3
+    	for j=1:3 
+          F0[i,j] += h 
+          DFW1 = DpWcb(F0, JVecF(p0), at, sw)
+          F0[i,j] -= 2*h 
+          DFW2 = DpWcb(F0, JVecF(p0), at, sw)
+          F0[i,j] += h
+          DpDFW[:, 3*((i-1)%3)+j] = (DFW1 - DFW2) / (2*h)
+	end
+    end 
+    return DpDFW
+end
+
+
+type WcbQuad{AT <: AbstractAtoms}
+    DpDpW::Matrix{Float64}
+    DpDpW_inv::Matrix{Float64}
+    DpDFW::Matrix{Float64}
+    at::AT
+end
+
+function WcbQuad()
+    DpDpW = DpDpWcb()
+    DpDFW = DpDFWcb()
+    for i=1:3
+        for j=1:3
+            if abs(DpDpW[i,j]) < 1e-9
+            	DpDpW[i,j] = 0
+	    end
+        end
+    end
+    @show DpDpW
+    return WcbQuad(DpDpW, pinv(DpDpW), DpDFW, bulk("Si", pbc=true))
+end 
+
+function (W::WcbQuad)(F)
+    p0 = positions(W.at)[2]
+    @show p0
+    #@show W.at
+    #p1 =  - W.DpDpW_inv * DpWcb(F, p0, W.at, calculator(W.at))
+    #Use the one below instead Att'[:]
+    p1 = - W.DpDpW_inv*W.DpDFW*(F'[:])
+    #p1 = p0 - W.DpDpW_inv*W.DpDFW*(F'[:])
+    #p2 = p1 - W.DpDpW_inv * DpWcb(F, p1, W.at)
+    #@show W.DpDpW_inv
+    #@show DpWcb(F, p0, W.at)
+    #@show DpWcb(F, p1, W.at)
+    #@show p1
+    return p1
+end
+
+
+function test_shift(W::WcbQuad, F, shift)
+    p0 = positions(W.at)[2]
+    return W.DpDFW*F'[:] + W.DpDpW*(shift)
+end
+
 
 
 end
