@@ -108,7 +108,7 @@ elseif k == 6
    it = 2;
    jit = 1;
 end
-    
+
 return it, jit
 
 end
@@ -118,7 +118,7 @@ end
 
 
 function little_a{T}(D::Array{T,2},r,s)
-  
+
    C = zeros(3,3,3,3)
    Chat = zeros(3,3,3,3)
 
@@ -126,7 +126,7 @@ function little_a{T}(D::Array{T,2},r,s)
    for i=1:3, j = 1:3, k = 1:3, l = 1:3
    	m = four_to_two_index(i,j)
         n = four_to_two_index(k,l)
-        C[i,j,k,l] = D[m,n]    
+        C[i,j,k,l] = D[m,n]
    end
 
    #Rotate the tensor to correct orientation
@@ -154,7 +154,8 @@ end
 
 
 
-function fourth_order_basis{T}(D::Array{T,2},a)
+function fourth_order_basis{T}(D::Array{T,2},a;
+            Tr = [1/sqrt(2) -1/sqrt(2) 0; 0 0 1; 1/sqrt(2) 1/sqrt(2) 0])
    C = zeros(3,3,3,3)
    Chat = zeros(3,3,3,3)
 
@@ -162,11 +163,10 @@ function fourth_order_basis{T}(D::Array{T,2},a)
    for i=1:3, j = 1:3, k = 1:3, l = 1:3
    	m = four_to_two_index(i,j)
         n = four_to_two_index(k,l)
-        C[i,j,k,l] = D[m,n]    
+        C[i,j,k,l] = D[m,n]
    end
 
    #Rotate the tensor to correct orientation
-   Tr = [1/sqrt(2) -1/sqrt(2) 0; 0 0 1; 1/sqrt(2) 1/sqrt(2) 0]
    Q = zeros(3,3,3,3)
    for i=1:3, j=1:3, k=1:3, l=1:3
 	Q[i,j,k,l] = Tr[k,i]*Tr[l,j]
@@ -188,7 +188,7 @@ function fourth_order_basis{T}(D::Array{T,2},a)
    #E = eye(3)
    #X = [1/sqrt(6) 1/sqrt(3) -1/sqrt(2); -2/sqrt(6) 1/sqrt(3) 0 ; 1/sqrt(6) 1/sqrt(3) 1/sqrt(2)]
    #X = transpose(X)
-   
+
    #Q = zeros(3,3,3,3)
    #for i=1:3, j=1:3, k=1:3, l=1:3
    #  Q[i,j,k,l] = X[k,i]*X[l,j]
@@ -227,7 +227,7 @@ function A_coefficients{T}(p::Array{Complex{Float64},1},D::Array{T,2})
     A[2,i] = 2*(imag(p[i])*imag(A[1,i]) - real(A[1,i])*real(p[i]))-(D[5,5]+D[4,4]*( (real(p[i]))^2 - (imag(p[i]))^2)  )/D[4,4] - (2*D[4,4]*real(p[i])*imag(p[i]) + 2*D[1,4]*(real(p[i])*imag(A[1,i])-imag(p[i])*real(A[1,i]) )  )*(1/D[1,4])*im
     A[3,i] = 1+0*im
   end
-  
+
   return A
 
 end
@@ -247,9 +247,9 @@ function D_coefficients{T}(p::Array{Complex{Float64},1},D::Array{T,2}, A::Array{
       else
         alpha[i,j] = real(A[i,l])
       end
-    end 
+    end
   end
-  
+
   for j=1:3
     k = 2*j-1
     m = 2*j
@@ -258,7 +258,7 @@ function D_coefficients{T}(p::Array{Complex{Float64},1},D::Array{T,2}, A::Array{
     alpha[4,k] = D[6,6]*(real(A[1,l])*real(p[l])-imag(A[1,l])*imag(p[l])+real(A[2,l]) ) + D[5,6]
     alpha[5,k] = D[1,2]*real(A[1,l])+D[2,2]*(real(A[2,l])*real(p[l]) - imag(A[2,l])*imag(p[l])  )
     alpha[6,k] = D[1,4]*real(A[1,l])+D[4,4]*real(p[l])
-    
+
     alpha[4,m] = -D[6,6]*(real(A[1,l])*imag(p[l])+imag(A[1,l])*real(p[l])+imag(A[2,l])  )
     alpha[5,m] = -D[1,2]*imag(A[1,l])-D[2,2]*(real(A[2,l])*imag(p[l])+imag(A[2,l])*real(p[l]))
     alpha[6,m] = -D[1,4]*imag(A[1,l])-D[4,4]*imag(p[l])
@@ -279,7 +279,7 @@ function sextic_roots{T}(D::Array{T,2})
   #k_0 = (D[1,1]*D[4,4]*D[5,5]-D[1,4]^2*D[1,1])/(D[2,2]*D[4,4]^2)
   #print("k0: ")
   #print(k_0)
-  
+
   inter = D[1,1]*D[2,2]-2*D[1,2]*D[6,6]-D[1,2]^2
   lead = D[2,2]*D[4,4]*D[6,6]
   k_0 = D[5,5]*D[6,6]*D[1,1]/lead
