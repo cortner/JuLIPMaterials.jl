@@ -68,8 +68,8 @@ function screw_111(s::AbstractString, R::Float64;
    if soln == :antiplane
       u = u_screw(x, y, a0)
       # apply to `at` and return
-      # X[1, :] = X0[1,:]
-      # X[2, :] = X0[2,:]
+      X[1, :] = X0[1,:]
+      X[2, :] = X0[2,:]
       X[3, :] += u
    elseif soln == :vectorial
       z = X0[3,:]
