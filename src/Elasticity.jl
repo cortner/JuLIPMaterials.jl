@@ -290,34 +290,49 @@ function sextic_roots{T}(D::Array{T,2})
   return p
 end
 
-# """
-# compute the Lame parameters for an elasticity tensor C or throw
-# and error if the material is not isotropic.
-# """
-# function lame_parameters(C::Tensor)
-#    error("lame_parameters is not yet implemented")
-# end
-#
-#
-# """
-# check whether the elasticity tensor is isotropic; return true/false
-# """
-# function is_isotropic{T}(C::Tensor)
-#    try
-#       lame_parameters(C)
-#       return true
-#    catch
-#       return false
-#    end
-# end
-#
-# """
-# for an isotropic elasticity tensor return the poisson ratio
-# """
-# function poisson_ratio(C::Tensor)
-#    λ, μ = lame_parameters(C)
-#    return 0.5 * λ / (λ + μ)
-# end
+function zener_anisotropy_index(C::Tensor)
+    Cv = voigt_moduli(C)
+    A = 2*Cv[4,4]/(Cv[1,1] - Cv[1,2])
+    return A
+end
+zener_anisotropy_index(at::AbstractAtoms) = zener_anisotropy_index(elastic_moduli(at))
 
+"""
+compute the Lame parameters for an elasticity tensor C or throw
+and error if the material is not isotropic.
+"""
+function lame_parameters(C::Tensor; aniso_threshold=1e-3)
+    A = zener_anisotropy_index(C)
+    @assert abs(A - 1.0) < aniso_threshold
+    Cv = voigt_moduli(C)
+    μ = Cv[1,2]
+    λ = Cv[4,4]
+    return λ, μ
+end
+lame_parameters(at::AbstractAtoms) = lame_parameters(elastic_moduli(at))
+
+poisson_ratio(λ, μ) = 0.5 * λ / (λ + μ)
+poisson_ratio(C::Tensor) = poisson_ratio(lame_parameters(C)...)
+poisson_ratio(at::AbstractAtoms) = poisson_ratio(elastic_moduli(at))
+
+function youngs_modulus(λ, μ)
+    ν = poisson_ratio(λ, μ)
+    return λ*(1 + ν)*(1 - 2ν) / ν
+end
+
+youngs_modulus(C::Tensor) = youngs_modulus(lame_parameters(C)...)
+youngs_modulus(at::AbstractAtoms) = youngs_modulus(elastic_moduli(at))
+
+"""
+check whether the elasticity tensor is isotropic; return true/false
+"""
+function is_isotropic{T}(C::Tensor)
+   try
+      lame_parameters(C)
+      return true
+   catch
+      return false
+   end
+end
 
 end
