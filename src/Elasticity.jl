@@ -4,6 +4,7 @@ module Elasticity
 using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
          stress, defm, set_defm!
 
+using StaticArrays
 
 typealias Tensor{T} Array{T,4}
 
@@ -84,57 +85,21 @@ function isotropic_moduli(λ, μ)
    return C
 end
 
+const _four_to_two_ = @SMatrix [1 6 5; 6 2 4; 5 4 3]
 
-function four_to_two_index(i, j)
+four_to_two(i, j) = _four_to_two_[i,j]
 
-if (i == 1 && j == 1)
-   dumb = 1
-elseif (i == 2 && j ==2)
-   dumb = 2
-elseif (i == 3 && j == 3)
-   dumb = 3
-elseif ((i == 3 && j == 2) || (i == 2 && j == 3))
-   dumb = 4
-elseif ((i == 3 && j == 1) || (i == 1 && j == 3))
-   dumb = 5
-elseif ((i == 2 && j == 1) || (i == 1 && j == 2))
-   dumb = 6
-end
-
-return dumb
-
-end
+four_to_two_index(i, j) = error("""`four_to_two_index` has been renamed
+ `four_to_two`; if you don't like it please file an issue :)""")
 
 
+const _two_to_four_ = @SVector [(1,1), (2,2), (3,3), (3,2), (3,1), (2,1)]
 
-function two_to_four_index(k)
+two_to_four(k) = _two_to_four_[k]
 
-it = 0
-jit = 0
+two_to_four_index(k) = error("""`two_to_four_index` has been renamed
+`two_to_four`; if you don't like it please file an issue :)""")
 
-if k == 1
-   it = 1;
-   jit = 1;
-elseif k == 2
-   it = 2;
-   jit = 2;
-elseif k == 3
-   it = 3;
-   jit = 3;
-elseif k == 4
-   it = 3;
-   jit = 2;
-elseif k == 5
-   it = 3;
-   jit = 1;
-elseif k == 6
-   it = 2;
-   jit = 1;
-end
-
-return it, jit
-
-end
 
 function fourth_order_basis{T}(D::Array{T,2},a)
    C = zeros(3,3,3,3)
@@ -142,8 +107,8 @@ function fourth_order_basis{T}(D::Array{T,2},a)
 
    #Convert back to Tensor notation
    for i=1:3, j = 1:3, k = 1:3, l = 1:3
-   	m = four_to_two_index(i,j)
-        n = four_to_two_index(k,l)
+   	m = four_to_two(i,j)
+        n = four_to_two(k,l)
         C[i,j,k,l] = D[m,n]
    end
 
@@ -162,8 +127,8 @@ function fourth_order_basis{T}(D::Array{T,2},a)
    M = zeros(6,6)
    #Convert the tensor back to 6 by 6
    for i=1:6, j=1:6
-        m, n = two_to_four_index(i)
-        p, q = two_to_four_index(j)
+        m, n = two_to_four(i)
+        p, q = two_to_four(j)
         M[i,j] = Chat[m,n,p,q]
    end
 
