@@ -2,7 +2,7 @@ module MaterialsScienceTools
 
 include("common.jl")
 
-# include("Elasticity.jl")
+include("CLE.jl")
 
 # include("GreensFunctions.jl")
 

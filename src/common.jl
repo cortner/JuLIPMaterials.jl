@@ -11,7 +11,8 @@ dist{T}(x::T, y::T, dims) = dist(x - y, dims)
 Base.broadcast{T}(dist, X::AbstractArray{T}, y::T, dims) =
    [ dist(x, y, dims) for x in X ]
 
-dists(varargs...) = error("`dists` has be replaced with `dist.`")
+# DEPRECATED: remove soon
+dists(varargs...) = error("`dists` has been replaced with `dist.`")
 
 
 """

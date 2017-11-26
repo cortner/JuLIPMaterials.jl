@@ -1,16 +1,17 @@
 
-module Elasticity
+module CLE
 
 using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
-         stress, defm, set_defm!
+             stress, defm, set_defm!
 
 using StaticArrays
 
-typealias Tensor{T} Array{T,4}
+const Tensor{T} = Array{T, 4}
 
 """
-* `elastic_moduli(at::AbstractAtoms) -> C::Tensor`
-* `elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms) -> C::Tensor`
+* `elastic_moduli(at::AbstractAtoms)`
+* `elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms)`
+* `elastic_moduli(C::Matrix)` : convert Voigt moduli to 4th order tensor
 
 computes the 3 x 3 x 3 x 3 elastic moduli tensor
 
@@ -37,31 +38,33 @@ function elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms)
    end
    # symmetrise it - major symmetries C_{iajb} = C_{jbia}
    for i = 1:3, a = 1:3, j=1:3, b=1:3
-      t = 0.5 * (C[i,a,j,b] + C[j,b,i,a])
-      C[i,a,j,b] = t
-      C[j,b,i,a] = t
+      C[i,a,j,b] = C[j,b,i,a] = 0.5 * (C[i,a,j,b] + C[j,b,i,a])
    end
    # minor symmetries - C_{iajb} = C_{iabj}
    for i = 1:3, a = 1:3, j=1:3, b=1:3
-      t = 0.5 * (C[i,a,j,b] + C[i,a,b,j])
-      C[i,a,j,b] = t
-      C[i,a,b,j] = t
+      C[i,a,j,b] = C[i,a,b,j] = 0.5 * (C[i,a,j,b] + C[i,a,b,j])
    end
    return C
 end
 
+"""
+`voig_moduli`: compute elastic moduli in the format of Voigt moduli.
+
+Methods:
+* `voigt_moduli(at)`
+* `voigt_moduli(calc, at)`
+* `voigt_moduli(C)`
+"""
 voigt_moduli(at::AbstractAtoms) = voigt_moduli(calculator(at), at)
 
 voigt_moduli(calc::AbstractCalculator, at::AbstractAtoms) =
    voigt_moduli(elastic_moduli(calc, at))
 
-#const voigtinds = [1, 5, 9, 6, 3, 2]
-
 const voigtinds = [1, 5, 9, 4, 7, 8]
 
 voigt_moduli{T}(C::Array{T,4}) = reshape(C, 9, 9)[voigtinds, voigtinds]
 
-# convert voigt to 3 x 3 x 3 x 3
+
 function elastic_moduli{T}(Cv::AbstractMatrix{T})
    @assert size(Cv) == (6,6)
    C = zeros(T, 9,9)
@@ -77,13 +80,17 @@ function elastic_moduli{T}(Cv::AbstractMatrix{T})
    return C
 end
 
-
+"""
+`isotropic_moduli(λ, μ)`: compute 4th order tensor of elastic moduli
+corresponding to the Lame parameters λ, μ.
+"""
 function isotropic_moduli(λ, μ)
    K = λ + μ * 2 / 3
    C = [ K * I[i,j] * I[k,l] + μ * (I[i,k]*I[j,l] + I[i,l]*I[j,k] - 2/3*I[i,j]*I[k,l])
          for i = 1:3, j = 1:3, k = 1:3, l = 1:3 ]
    return C
 end
+
 
 const _four_to_two_ = @SMatrix [1 6 5; 6 2 4; 5 4 3]
 
@@ -131,24 +138,6 @@ function fourth_order_basis{T}(D::Array{T,2},a)
         p, q = two_to_four(j)
         M[i,j] = Chat[m,n,p,q]
    end
-
-   #E = eye(3)
-   #X = [1/sqrt(6) 1/sqrt(3) -1/sqrt(2); -2/sqrt(6) 1/sqrt(3) 0 ; 1/sqrt(6) 1/sqrt(3) 1/sqrt(2)]
-   #X = transpose(X)
-
-   #Q = zeros(3,3,3,3)
-   #for i=1:3, j=1:3, k=1:3, l=1:3
-   #  Q[i,j,k,l] = X[k,i]*X[l,j]
-   #end
-
-
-   #Now change the basis:
-   #for i =1:3, j = 1:3, k = 1:3, l = 1:3
-   #  for p =1:3, q = 1:3, r = 1:3, s = 1:3
-       #Chat[i,j,k,l] = Chat[i,j,k,l] + C[p,q,r,s]*dot(E[:,p], X[:,i])*dot(E[:,q], X[:,j])*dot(E[:,r], X[:,k])*dot(E[:,s], X[:,l])
-   #    Chat[i,j,k,l] = Chat[i,j,k,l] + Q[p,q,i,j]*C[p,q,r,s]*Q[r,s,k,l]
-   #  end
-   #end
 
   return M
 end
@@ -264,7 +253,7 @@ zener_anisotropy_index(at::AbstractAtoms) = zener_anisotropy_index(elastic_modul
 
 """
 compute the Lame parameters for an elasticity tensor C or throw
-and error if the material is not isotropic.
+an error if the material is not isotropic.
 """
 function lame_parameters(C::Tensor; aniso_threshold=1e-3)
     A = zener_anisotropy_index(C)
@@ -291,7 +280,7 @@ youngs_modulus(at::AbstractAtoms) = youngs_modulus(elastic_moduli(at))
 """
 check whether the elasticity tensor is isotropic; return true/false
 """
-function is_isotropic{T}(C::Tensor)
+function is_isotropic(C::Tensor)
    try
       lame_parameters(C)
       return true
