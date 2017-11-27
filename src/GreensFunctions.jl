@@ -11,6 +11,8 @@ using MaterialsScienceTools: Vec3, Mat3, Ten33, Ten43
 
 using Einsum, StaticArrays
 
+export GreenFunction, IsoGreenFcn3D, grad
+
 
 # extend `angle` to avoid going via ℂ
 Base.angle(x, y) = atan2(y, x)
@@ -34,7 +36,10 @@ inv3x3(A) = inv( Mat3(A) )
 
 # ========== Implementation of the 3D Green's Function =============
 
-struct GreenFunction3D{T}
+abstract type AbstractGreenFunction{T} end
+
+
+struct GreenFunction3D{T} <: AbstractGreenFunction{T}
    Nquad::Int
    C::Ten43{T}
    remove_singularity::Bool
@@ -112,76 +117,49 @@ function grad_green(x::Vec3{T}, ℂ::Ten43{T}, Nquad::Int) where T <: AbstractFl
 end
 
 
-# ========== Implementation of the BBS79 formula for a dislocation =============
+struct IsoGreenFcn3D{T} <: AbstractGreenFunction{T}
+   λ::T
+   μ::T
+   remove_singularity::Bool
+end
 
-function QSB(m0, n0, Nquad)
-   Q, S, B = zero(Mat3), zero(Mat3), zero(Mat3)
-   for ω in range(0, pi/Nquad, Nquad)
-      m = cos(ω) * m0 + sin(ω) * n0
-      n = sin(ω) * m0 + cos(ω) * n0
-      nn⁻¹ = inv3x3( contract2(C, n) )
-      nm = contract(n, C, m)
-      mm = contract2(C, m)
-      Q += nn⁻¹                           # (3.6.4)
-      S += nn⁻¹ * nm                      # (3.6.6)
-      B += mm - nm' * nn⁻¹ * nm           # (3.6.9) and using  mn = nm'  (TODO: potential bug?)
+IsoGreenFcn3D(λ, μ; remove_singularity = true) =
+   IsoGreenFcn3D(λ, μ, remove_singularity)
+
+function (G::IsoGreenFcn3D{T})(x) where T
+   if G.remove_singularity && norm(x) < 1e-10
+      return @SMatrix zeros(T, 3, 3)
    end
-   return Q * (-1/Nquad), S * (-1/Nquad), B * (1/4/Nquad/pi)
+   return eval_greeniso(Vec3{T}(x), G.λ, G.μ)
 end
 
-"""
-grad_u_bbs(x, b, ν, C) -> ∇u
-
-the dislocation line is assumed to pass through the origin
-
-* x : position in space
-* b : burgers vector
-* t : dislocation direction (tangent to dislocation line)
-* C : elastic moduli 3 x 3 x 3 x 3
-"""
-function grad_u_bbs(x, b, t, C, Nquad = 10)
-   x, b, t, C = Vec3(x), Vec3(b), Vec3(t), Ten43(C)
-   t /= norm(t)
-   m0, n0 = onb(t)   # some refrence ONB for computing Q, S, B
-   Q, S, B = QSB(m0, n0, Nquad)
-   # compute displacement gradient
-   # project x to the (m0, n0) plane and compute the (m, n) vectors
-   x = x - dot(x, t) * t
-   r = norm(x)
-   m = x / norm(x)
-   n = m × t
-   #  Implement (4.1.16)
-   nn⁻¹ = inv3x3( contract(n, C, n) )
-   nm = contract(n, C, m)
-   return 1/(2*π*r) * ( (- S * b) ⊗ m + (nn⁻¹ * ((2*π*B + nm*S) * b)) ⊗ n )
+function grad(G::IsoGreenFcn3D{T}, x) where T
+   if G.remove_singularity && norm(x) < 1e-10
+      return @SArray zeros(T, 3, 3, 3)
+   end
+   return grad_greeniso(Vec3{T}(x), G.λ, G.μ)
 end
 
 
-
-"""
-* `IsoGreenTensor3D(x,μ::Float64,λ::Float64) -> G, DG`
-Returns the 3D Isotropic Green tensor and gradient at the point x, via exact formula
-with Lamé parameters μ and λ.
-"""
-function IsoGreenTensor3D(x,μ::Float64,λ::Float64)
-    # Error handling which should be redone with types.
-    if ~( size(x)==(3,) ) && ~( size(x)==(3,1) )
-        error("Input is not a 3D column vector");
-    end
-
-    # Construct Green tensor
-    G = ((λ+3*μ)/(λ+2*μ)*eye(3)/norm(x)+(λ+μ)/(λ+2*μ)*x*x'/norm(x)^3)/(8*pi*μ);
-
-    # Construct gradient of Green tensor
-    DG = zeros(Float64,3,3,3);
-    Id = eye(3);
-    for i=1:3, j=1:3, k=1:3
-            DG[i,j,k] = ( (λ+μ)*(Id[i,k]*x[j]+Id[j,k]*x[i]) - (λ+3*μ)*eye(3)[i,j]*x[k] ) -
-                            3*(λ+μ)*x[i]*x[j]*x[k]/(norm(x)^2);
-    end
-    DG = DG/(8*pi*μ*(λ+2*μ)*norm(x)^3);
-
-    return G, DG
+"isotropic CLE Green's function"
+function eval_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T <: AbstractFloat
+   Id = @SMatrix eye(T, 3)
+   x̂ = x/norm(x)
+   return (((λ+3*μ)/(λ+2*μ)/norm(x)) * Id  +
+               ((λ+μ)/(λ+2*μ)/norm(x)) * x̂ * x̂') / (8.0*π*μ)
 end
+
+"gradient of isotropic CLE Green's function"
+function grad_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T <: AbstractFloat
+   DG = @MArray zeros(T, 3, 3, 3)
+   Id = @SArray eye(T, 3)
+   x̂ = x / norm(x)
+   for i = 1:3, j = 1:3, k = 1:3
+      DG[i,j,k] = (λ+μ) * (Id[i,k] * x̂[j] + Id[j,k] * x̂[i]) - (λ+3*μ) * Id[i,j] * x̂[k] - 3*(λ+μ) * x̂[i] * x̂[j] * x̂[k]
+   end
+   DG ./= 8 * π * μ*(λ+2*μ) * norm(x)^2
+   return DG
+end
+
 
 end
