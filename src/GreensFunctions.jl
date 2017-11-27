@@ -9,6 +9,7 @@ module GreensFunctions
 
 using MaterialsScienceTools: Vec3, Mat3, Ten33, Ten43
 
+using Einsum, StaticArrays
 
 
 # extend `angle` to avoid going via ℂ
@@ -24,23 +25,92 @@ euclidean(φ, ψ) = Vec3(cos(ψ) * cos(φ), cos(ψ) * sin(φ), sin(ψ))
 function onb{T}(x::Vec3{T})
    x /= norm(x)
    φ, ψ = spherical(x)
-   return Vec3{T}(-sin(φ), cos(φ), 0.0),
+   return Vec3{T}(-sin(φ), cos(φ), zero(T)),
           Vec3{T}(sin(ψ)*cos(φ), sin(ψ)*sin(φ), -cos(ψ))
 end
 
 "explicit inverse to enable AD, if A is an `SMatrix` then the conversion is free"
 inv3x3(A) = inv( Mat3(A) )
 
-# contract(a, C, b) -> D  where D_ij = C_injm a_n b_m
-# contract(a::Vec3, C::Ten43, b::Vec3) = Mat3([dot(C[i,:,j,:] * b, a) for i=1:3, j = 1:3])
-# the following is a meta-programming trick (due to @keno) which basically makes
-# the compiler write out the entire expression without intermediate allocation
-#   (edit: this works only on v0.6; on v0.5 not much is gained)
-# @eval contract(a, C, b) = Mat3($(Expr(:tuple, (:(dot(C[$i,:,$j,:] * b, a)) for i=1:3, j=1:3)...)))
+# ========== Implementation of the 3D Green's Function =============
 
-contract2(C::Ten43, a::Vec3) = constract(a, C, a)
+struct GreenFunction3D{T}
+   Nquad::Int
+   C::Ten43{T}
+   remove_singularity::Bool
+end
 
-⊗(a::Vec3, b::Vec3) = a * b'
+"""
+`GreenFunction3D`
+construct a green's function type
+"""
+function GreenFunction(C::Ten43; Nquad = nothing, remove_singularity = true)
+   if Nquad == nothing
+      error("still need to implement auto-tuning, please provide Nquad")
+   end
+   return GreenFunction3D(Nquad, C, remove_singularity)
+end
+
+GreenFunction{T}(C::Array{T, 4}; kwargs...) = GreenFunction(Ten43{T}(C); kwargs...)
+
+function (G::GreenFunction3D{T})(x) where T
+   if G.remove_singularity && norm(x) < 1e-10
+      return @SMatrix zeros(T, 3, 3)
+   end
+   return eval_green(x, G.C, G.Nquad)
+end
+
+function grad(G::GreenFunction3D{T}, x) where T
+   if G.remove_singularity && norm(x) < 1e-10
+      return @SArray zeros(T, 3, 3, 3)
+   end
+   return grad_green(x, G.C, G.Nquad)
+end
+
+
+"eval_green(x::Vec3, ℂ::Ten43, Nquad::Int)"
+function eval_green(x::Vec3{T}, ℂ::Ten43{T}, Nquad::Int) where T <: AbstractFloat
+   # allocate
+   G = @SMatrix zeros(T, 3, 3)
+   zz = @MMatrix zeros(T, 3, 3)
+   # Initialise tensors.
+   x̂ = x/norm(x)
+   # two vectors orthogonal to x.
+   x1, x2 = onb(x̂)
+   # Integrate
+   for ω in range(0.0, pi/Nquad, Nquad)
+      z = cos(ω) * x1 + sin(ω) * x2
+      @einsum zz[i,j] = z[α] * ℂ[i,α,j,β] * z[β]
+      # Perform integration
+      G += inv(zz)
+   end
+   # Normalise appropriately
+   return G / (4*pi*norm(x)*Nquad)
+end
+
+
+function grad_green(x::Vec3{T}, ℂ::Ten43{T}, Nquad::Int) where T <: AbstractFloat
+   # allocate
+   DG = @MArray zeros(T, 3, 3, 3)
+   zz = @MMatrix zeros(T, 3, 3)
+   zT = @MMatrix zeros(T, 3, 3)
+   # Initialise tensors.
+   x̂ = x/norm(x)
+   # two vectors orthogonal to x.
+   x1, x2 = onb(x̂)
+   # Integrate
+   for ω in range(0.0, pi/Nquad, Nquad)
+      z = cos(ω) * x1 + sin(ω) * x2
+      @einsum zz[i,j] = z[α] * ℂ[i,α,j,β] * z[β]
+      @einsum zT[i,j] = z[α] * ℂ[i,α,j,β] * x̂[β]
+      zzinv = inv(zz)
+      F = zzinv * (zT + zT') * zzinv
+      @einsum DG[i,j,k] = DG[i,j,k] + zzinv[i,j] * x̂[k] - F[i,j] * z[k]
+   end
+   DG ./= (-4.0 * pi * norm(x)^2 * Nquad)
+   return SArray(DG)
+end
+
 
 # ========== Implementation of the BBS79 formula for a dislocation =============
 
@@ -86,60 +156,6 @@ function grad_u_bbs(x, b, t, C, Nquad = 10)
    return 1/(2*π*r) * ( (- S * b) ⊗ m + (nn⁻¹ * ((2*π*B + nm*S) * b)) ⊗ n )
 end
 
-
-
-"""
-* `GreenTensor3D(x,ℂ,quadpts=10) -> G, DG`
-Computes the full 3D Green tensor, G, and its gradient, DG, at the point x for elasticity
-tensor ℂ ∈ ℝ³ˣ³ˣ³ˣ³, based on using quadpts quadrature points on a circle.
-"""
-function GreenTensor3D{T}(x::AbstractVector{T}, ℂ, quadpts=10;
-                           remove_singularity = true)
-    # Some basic error handling which should be redone with types.
-    if ~( size(x)==(3,) ) && ~( size(x)==(3,1) )
-        error("Input is not a 3D column vector")
-    elseif ~( size(ℂ)==(3,3,3,3) )
-        error("Elasticity tensor incorrect size")
-    end
-
-    if remove_singularity && norm(x) < 1e-10
-      return zeros(T, 3, 3)
-   end
-
-    # Initialise tensors.
-    G = zeros(T,3,3)
-    DG = zeros(T,3,3,3)
-    x̂ = x/norm(x)
-    F = zeros(T,3,3)
-
-    # basis is a 3x2 matrix of vectors orthogonal to x.
-    basis = hcat(onb(Vec3(x))...)
-
-    # Integrate
-    for m=0:quadpts-1
-        zz = zeros(T,3,3)
-        zT = zeros(T,3,3)
-        z = basis*[cos(pi*m/quadpts), sin(pi*m/quadpts)]
-        for i=1:3, j=1:3
-            zz[i,j] = dot(z, ℂ[i,:,j,:] * z)
-            zT[i,j] = dot(z, ℂ[i,:,j,:] * x̂)
-        end
-        zzinv = inv3x3(zz)
-
-        # Perform integration
-        G += zzinv
-        F = (zz\(zT+zT'))/zz
-        for i=1:3, j=1:3, k=1:3
-            DG[i,j,k] += zzinv[i,j]*x̂[k]-F[i,j]*z[k]
-        end
-    end
-
-    # Normalise appropriately
-    G = G/(4*pi*norm(x)*quadpts)
-    DG = -DG/(4*pi*norm(x)^2*quadpts)
-
-    return G, DG
-end
 
 
 """
