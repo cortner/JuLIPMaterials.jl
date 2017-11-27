@@ -1,8 +1,14 @@
 
-using JuLIP
-
+using JuLIP, StaticArrays
 
 export dists, cluster, strains
+
+
+const Vec3{T} = SVector{3, T}
+const Mat3{T} = SMatrix{3,3,T}
+const Ten33{T} = SArray{Tuple{3,3,3},T,3,27}
+const Ten43{T} = SArray{Tuple{3,3,3,3},T,4,81}
+
 
 dist(x, dims) = vecnorm(x[dims])
 

@@ -4,8 +4,7 @@ using JuLIP, JuLIP.Potentials
 import MaterialsScienceTools
 
 MST = MaterialsScienceTools
-BCC = MST.BCC
-EL = MST.Elasticity
+CLE = MST.CLE
 GR = MST.GreensFunctions
 
 
@@ -16,7 +15,7 @@ Cvoigt = [ 3.0 1.5 1.5 0.0 0.0 0.0
            0.0 0.0 0.0 0.0 1.2 0.0
            0.0 0.0 0.0 0.0 0.0 1.2 ]
 
-C = EL.elastic_moduli(Cvoigt)
+C = CLE.elastic_moduli(Cvoigt)
 
 ∷(C::Array{Float64, 3}, F::Matrix) = reshape(C, 3, 9) * F[:]
 
@@ -48,7 +47,7 @@ println("maxerr = $maxerr")
 print("Test agreement between anisotopic and isotropic Gr fcn: ")
 λ = 1.0 + rand()
 μ = 1.0 + rand()
-C = EL.isotropic_moduli(λ, μ)
+C = CLE.isotropic_moduli(λ, μ)
 maxerr = 0.0
 for n = 1:10
    x = (rand(3) - 0.5) * 10.0
@@ -95,7 +94,7 @@ Cvoigt = [ 3.0 1.5 1.5 0.0 0.0 0.0
 
 Cvoigt = Cvoigt + 0.1 * rand(Cvoigt)
 Cvoigt = 0.5 * (Cvoigt + Cvoigt')
-C = EL.elastic_moduli(Cvoigt)
+C = CLE.elastic_moduli(Cvoigt)
 
 
 println("Convergence of G with random C: ")
