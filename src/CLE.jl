@@ -6,6 +6,10 @@ using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
 
 using StaticArrays
 
+using MaterialsScienceTools: Vec3, Mat3, Ten33, Ten43,
+         MVec3, MMat3, MTen33, MTen43
+
+# TODO: get rid of this?
 const Tensor{T} = Array{T, 4}
 
 """
@@ -288,5 +292,15 @@ function is_isotropic(C::Tensor)
       return false
    end
 end
+
+
+# """
+# `module GreensFunctions`
+#
+# Implements some CLE Green's functions, both in analytic form or
+# semi-analytic using the formulas from BBS79.
+# """
+
+include("GreensFunctions.jl")
 
 end

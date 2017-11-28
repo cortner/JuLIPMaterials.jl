@@ -1,11 +1,4 @@
 
-"""
-`module GreensFunctions`
-
-Implements some CLE Green's functions, both in analytic form or
-semi-analytic using the formulas from BBS79.
-"""
-module GreensFunctions
 
 using MaterialsScienceTools: Vec3, Mat3, Ten33, Ten43
 
@@ -30,9 +23,6 @@ function onb{T}(x::Vec3{T})
    return Vec3{T}(-sin(φ), cos(φ), zero(T)),
           Vec3{T}(sin(ψ)*cos(φ), sin(ψ)*sin(φ), -cos(ψ))
 end
-
-"explicit inverse to enable AD, if A is an `SMatrix` then the conversion is free"
-inv3x3(A) = inv( Mat3(A) )
 
 # ========== Implementation of the 3D Green's Function =============
 
@@ -62,22 +52,22 @@ function (G::GreenFunction3D{T})(x) where T
    if G.remove_singularity && norm(x) < 1e-10
       return @SMatrix zeros(T, 3, 3)
    end
-   return eval_green(x, G.C, G.Nquad)
+   return eval_green(Vec3(x), G.C, G.Nquad)
 end
 
 function grad(G::GreenFunction3D{T}, x) where T
    if G.remove_singularity && norm(x) < 1e-10
       return @SArray zeros(T, 3, 3, 3)
    end
-   return grad_green(x, G.C, G.Nquad)
+   return grad_green(Vec3(x), G.C, G.Nquad)
 end
 
 
 "eval_green(x::Vec3, ℂ::Ten43, Nquad::Int)"
-function eval_green(x::Vec3{T}, ℂ::Ten43{T}, Nquad::Int) where T <: AbstractFloat
+function eval_green(x::Vec3{T}, ℂ::Ten43, Nquad::Int) where T
    # allocate
-   G = @SMatrix zeros(T, 3, 3)
-   zz = @MMatrix zeros(T, 3, 3)
+   G = zero(Mat3{T})     # @SMatrix zeros(T, 3, 3)
+   zz = zero(MMat3{T})   # @MMatrix zeros(T, 3, 3)
    # Initialise tensors.
    x̂ = x/norm(x)
    # two vectors orthogonal to x.
@@ -94,11 +84,11 @@ function eval_green(x::Vec3{T}, ℂ::Ten43{T}, Nquad::Int) where T <: AbstractFl
 end
 
 
-function grad_green(x::Vec3{T}, ℂ::Ten43{T}, Nquad::Int) where T <: AbstractFloat
+function grad_green(x::Vec3{T}, ℂ::Ten43, Nquad::Int) where T
    # allocate
-   DG = @MArray zeros(T, 3, 3, 3)
-   zz = @MMatrix zeros(T, 3, 3)
-   zT = @MMatrix zeros(T, 3, 3)
+   DG = zero(MTen33{T}) # @MArray zeros(T, 3, 3, 3)
+   zz = zero(MMat3{T})  # @MMatrix zeros(T, 3, 3)
+   zT = zero(MMat3{T})  # @MMatrix zeros(T, 3, 3)
    # Initialise tensors.
    x̂ = x/norm(x)
    # two vectors orthogonal to x.
@@ -130,7 +120,7 @@ function (G::IsoGreenFcn3D{T})(x) where T
    if G.remove_singularity && norm(x) < 1e-10
       return @SMatrix zeros(T, 3, 3)
    end
-   return eval_greeniso(Vec3{T}(x), G.λ, G.μ)
+   return eval_greeniso(Vec3(x), G.λ, G.μ)
 end
 
 function grad(G::IsoGreenFcn3D{T}, x) where T
@@ -142,7 +132,7 @@ end
 
 
 "isotropic CLE Green's function"
-function eval_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T <: AbstractFloat
+function eval_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T
    Id = @SMatrix eye(T, 3)
    x̂ = x/norm(x)
    return (((λ+3*μ)/(λ+2*μ)/norm(x)) * Id  +
@@ -150,7 +140,7 @@ function eval_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T <: AbstractFloat
 end
 
 "gradient of isotropic CLE Green's function"
-function grad_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T <: AbstractFloat
+function grad_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T
    DG = @MArray zeros(T, 3, 3, 3)
    Id = @SArray eye(T, 3)
    x̂ = x / norm(x)
@@ -159,7 +149,4 @@ function grad_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T <: AbstractFloat
    end
    DG ./= 8 * π * μ*(λ+2*μ) * norm(x)^2
    return DG
-end
-
-
 end

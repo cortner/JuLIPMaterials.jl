@@ -8,6 +8,10 @@ const Vec3{T} = SVector{3, T}
 const Mat3{T} = SMatrix{3,3,T}
 const Ten33{T} = SArray{Tuple{3,3,3},T,3,27}
 const Ten43{T} = SArray{NTuple{4,3},T,4,81}
+const MVec3{T} = MVector{3, T}
+const MMat3{T} = MMatrix{3,3,T}
+const MTen33{T} = MArray{Tuple{3,3,3},T,3,27}
+const MTen43{T} = MArray{NTuple{4,3},T,4,81}
 
 
 dist(x, dims) = vecnorm(x[dims])

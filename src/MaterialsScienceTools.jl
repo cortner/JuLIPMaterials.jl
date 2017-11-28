@@ -4,7 +4,6 @@ include("common.jl")
 
 include("CLE.jl")
 
-include("GreensFunctions.jl")
 
 
 # include("bbs.jl")
