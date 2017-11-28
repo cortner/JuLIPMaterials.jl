@@ -64,10 +64,10 @@ end
 
 
 "eval_green(x::Vec3, ℂ::Ten43, Nquad::Int)"
-function eval_green(x::Vec3{T}, ℂ::Ten43, Nquad::Int) where T
+function eval_green(x::Vec3{TT}, ℂ::Ten43, Nquad::Int) where TT
    # allocate
-   G = zero(Mat3{T})     # @SMatrix zeros(T, 3, 3)
-   zz = zero(MMat3{T})   # @MMatrix zeros(T, 3, 3)
+   G = @SMatrix zeros(TT, 3, 3)
+   zz = @MMatrix zeros(TT, 3,3)
    # Initialise tensors.
    x̂ = x/norm(x)
    # two vectors orthogonal to x.
@@ -84,11 +84,11 @@ function eval_green(x::Vec3{T}, ℂ::Ten43, Nquad::Int) where T
 end
 
 
-function grad_green(x::Vec3{T}, ℂ::Ten43, Nquad::Int) where T
+function grad_green(x::Vec3{TT}, ℂ::Ten43, Nquad::Int) where TT
    # allocate
-   DG = zero(MTen33{T}) # @MArray zeros(T, 3, 3, 3)
-   zz = zero(MMat3{T})  # @MMatrix zeros(T, 3, 3)
-   zT = zero(MMat3{T})  # @MMatrix zeros(T, 3, 3)
+   DG = @MArray zeros(TT, 3, 3, 3)
+   zz = @MMatrix zeros(TT, 3, 3)
+   zT = @MMatrix zeros(TT, 3, 3)
    # Initialise tensors.
    x̂ = x/norm(x)
    # two vectors orthogonal to x.

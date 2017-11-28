@@ -7,35 +7,9 @@ MST = MaterialsScienceTools
 CLE = MST.CLE
 
 using CLE: grad
+using MST.Testing
 
 
-function randvec3(s0=1.0, s1=2.0)
-   x = rand(3) - 0.5
-   return (x / norm(x)) * (s0 + rand() * (s1-s0))
-end
-
-function randmoduli(rnd = 0.1)
-   Cv = [ 3.0 1.5 1.5 0.0 0.0 0.0
-              1.5 3.0 1.5 0.0 0.0 0.0
-              1.5 1.5 3.0 0.0 0.0 0.0
-              0.0 0.0 0.0 1.2 0.0 0.0
-              0.0 0.0 0.0 0.0 1.2 0.0
-              0.0 0.0 0.0 0.0 0.0 1.2 ]
-   Cv += Symmetric( 2*rnd*(rand(6, 6)-0.5) )
-   return CLE.elastic_moduli(Cv)
-end
-
-∷(C::Array{Float64, 3}, F::Matrix) = reshape(C, 3, 9) * F[:]
-
-# div C ∇u = C_iajb u_j,ab
-function cleforce(x, u, C)
-    f = zeros(3)
-    for j = 1:3
-        ujab = ForwardDiff.hessian(y->u(y)[j], x)
-        f += C[:,:,j,:] ∷ ujab
-    end
-    return JVecF(f)
-end
 
 println("------------------------------------------------------------")
 println(" Testing the 3D Anisotropic Green's Function Implementation")
@@ -71,7 +45,8 @@ println("maxerr = $maxerr, maxerr_g = $maxerr_g")
 Crand = randmoduli()
 
 for (G, id, C) in [ (CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
-           (CLE.GreenFunction(Crand, Nquad = 6), "GreenFunction(6)", Crand),
+            #  The next one SHOULD fail, so it is commented out
+            # (CLE.GreenFunction(Crand, Nquad = 6), "GreenFunction(6)", Crand),
            (CLE.GreenFunction(Crand, Nquad = 30), "GreenFunction(30)", Crand) ]
    print("G = $id : test that ∇G is consistent with G: ")
    maxerr = 0.0
