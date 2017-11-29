@@ -5,7 +5,7 @@ using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
          stress, defm, set_defm!
 
 
-typealias Tensor{T} Array{T,4}
+const Tensor{T} = Array{T,4}
 
 """
 * `elastic_moduli(at::AbstractAtoms) -> C::Tensor`

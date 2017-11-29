@@ -3,6 +3,30 @@
 using GaussQuadrature: chebyshev
 
 
+# ========== Edge dislocation isotropic solid ==============
+
+"""
+`u_edge_isotropic(x, y, b, ν) -> u_x, u_y`
+
+compute the displacement field `ux, uy` for an edge dislocation in an
+isotropic linearly elastic medium, with core at (0,0),
+burgers vector `b * [1.0;0.0]` and Poisson ratio `ν`
+
+This is to be used primarily for comparison, since the exact solution will
+not be the isotropic elasticity solution.
+"""
+function u_edge_isotropic(x, y, b, ν)
+    r² = x.^2 + y.^2
+    ux = b/(2*π) * ( angle.(x + im*y) + (x .* y) ./ (2*(1-ν) * r²) )
+    uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log.(r²) + - 2 * y.^2 ./ (4*(1-ν) * r²) )
+    return ux, uy
+end
+
+
+# ========== The Stroh / Hirth&Lothe Horror! =======================
+
+include("sextic.jl")
+
 # ========== Implementation of the BBS79 formula for a dislocation =============
 
 function QSB(C, m0::Vec3{TT}, n0::Vec3{TT}, Nquad) where TT

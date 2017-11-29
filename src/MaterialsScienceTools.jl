@@ -4,6 +4,7 @@ include("common.jl")
 
 include("CLE.jl")
 
+include("FCC.jl")
 
 include("Testing.jl")
 
