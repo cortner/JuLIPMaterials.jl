@@ -301,6 +301,8 @@ end
 # semi-analytic using the formulas from BBS79.
 # """
 
-include("GreensFunctions.jl")
+include("cle_greenfunctions.jl")
+
+include("cle_dislocations.jl")
 
 end

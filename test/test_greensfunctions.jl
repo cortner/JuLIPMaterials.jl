@@ -52,15 +52,9 @@ for (G, id, C) in [ (CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
    maxerr = 0.0
    for n = 1:10
       a, x = randvec3(), randvec3()
-
-      u = x_ -> G(x_)[1,1]
-      ∂u = x_ -> grad(G, x_)[1,1,:]
-      ∂uad = x_ -> ForwardDiff.gradient(u, x_)
-
-      # u = x_ -> (a' * G(x_))[:]
-      # ∂u = x_ -> reshape(a' *  reshape(grad(G, x_), 3, 9), 3, 3)
-      # ∂uad = x_ -> ForwardDiff.jacobian(u, x_)
-
+      u = x_ -> (a' * G(x_))[:]
+      ∂u = x_ -> reshape(a' *  reshape(grad(G, x_), 3, 9), 3, 3)
+      ∂uad = x_ -> ForwardDiff.jacobian(u, x_)
       maxerr = max( maxerr, vecnorm(∂u(x) - ∂uad(x), Inf) )
    end
    println("maxerr = $maxerr")
@@ -80,7 +74,6 @@ for (G, id, C) in [
    println("maxerr = $maxerr")
    @test maxerr < 1e-12
 end
-
 
 
 println("Convergence of G with random C (please test this visually!): ")
