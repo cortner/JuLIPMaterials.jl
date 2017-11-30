@@ -4,7 +4,7 @@ For now this is a random collection of tools for computational materials
 science, such as computing elastic moduli or generating elastic fields for
 dislocations.
 
-## Library
+## Summary of Library Content
 
 * whole-space Green's functions for elliptic systems with constant coeffs
    - `CLE.GreenFunction`
@@ -15,10 +15,9 @@ dislocations.
    - edge isotropic: `CLE.u_edge_isotropic`
    - edge cubic: `CLE.u_edge_fcc_110`
 
-## Example Notebooks
+* Atomistic Dislocation predictors:
+   - Pure Edge Dislocation in FCC: `examples/Edge Dislocation FCC 110.ipynb`
 
-* `Edge Dislocation FCC 110`: demonstrates residual force decay for
-different CLE solutions of an edge dislocation in an FCC crystal
 
 
 ## TODO
