@@ -1,5 +1,8 @@
 
-module Dislocations_Silicon_hard_110
+# TODO: this is really a module for face-centered diamond-cubic
+#       and over time it should become much more general of course
+
+module Si
 
 using JuLIP
 using JuLIP.ASE
