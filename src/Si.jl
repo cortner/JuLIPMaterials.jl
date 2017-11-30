@@ -6,7 +6,7 @@ module Si
 
 using JuLIP
 using JuLIP.ASE
-using MaterialsScienceTools.Elasticity_110: elastic_moduli, voigt_moduli, fourth_order_basis, sextic_roots, A_coefficients, D_coefficients, little_a
+using MaterialsScienceTools.CLE: elastic_moduli, voigt_moduli, fourth_order_basis, sextic_roots, A_coefficients, D_coefficients, little_a
 
 
 """
