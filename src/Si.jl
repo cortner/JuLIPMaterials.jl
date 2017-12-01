@@ -5,11 +5,12 @@
 module Si
 
 using JuLIP, JuLIP.ASE, JuLIP.Potentials
-import MaterialsScienceTools.CauchyBorn
+import MaterialsScienceTools, MaterialsScienceTools.CauchyBorn, MaterialsScienceTools.CLE
 using MaterialsScienceTools.CLE: elastic_moduli, voigt_moduli,
          fourth_order_basis, sextic_roots, A_coefficients, D_coefficients,
          little_a
 
+CLE = MaterialsScienceTools.CLE
 
 """
 `fcc_edge_plane(s::AbstractString) -> at::ASEAtoms, b, xcore `
@@ -584,14 +585,43 @@ end
 end
 
 
-
+"""
+`edge110` : produces a high-quality CLE solution for an edge dislocation
+in bulk silicon, 110 orientation.
+"""
 function edge110(species::AbstractString, R::Real;
                   truncate=true, cle=:anisotropic, ν=0.25,
-                  calc=nothing,
+                  calc=sw_eq(), sym = true,
                   TOL=1e-4, zDir=1,
                   eos_correction = true)
-   @assert species = "Si"
 
+   @assert species == "Si"
+   # setup undeformed geometry
+   at, b, x0 = Si.si_plane(R)
+   a = cell(bulk("Si", cubic=true))[1,1]   # lattice parameter
+
+   W = CauchyBorn.WcbQuad()
+   C = elastic_moduli(W)
+   Cv2 = voigt_moduli(C)
+   Cv2 = round.(Cv2, 8)
+
+   if cle != :anisotropic
+      error("unknown `cle` option")
+   end
+
+   # edge solution
+   U = Si.Edge.EdgeCubic(b, Cv2, a)
+   U.x0[:] = x0[1:2]   # fix core ? why needed ?
+
+   if sym
+      symml_displacement!(at, U)
+   else
+      ml_displacement!(at, U)
+   end
+
+   set_calculator!(at, calc) 
+
+   return at, x0
 end
 
 end
