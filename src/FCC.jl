@@ -95,6 +95,8 @@ function eoscorr(X::Matrix, b)
 end
 
 
+# TODO: rename this edge110 ???
+
 """
 `fcc_edge_geom(s, R; kwargs...) -> at::ASEAtoms`
 
@@ -116,10 +118,10 @@ core direction ν ∝ e₃
 * `eos_correction = false` : apply the slip-correction from Ehrlacher, Ortner, Shapeev (Arch. Ration. Mech. Anal. 2016)
 """
 function fcc_edge_geom(species::AbstractString, R::Real;
-                       truncate=true, cle=:isotropic, ν=0.25,
+                       truncate=true, cle=:anisotropic, ν=0.25,
                        calc=nothing,
                        TOL=1e-4, zDir=1,
-                       eos_correction = false)
+                       eos_correction = true)
    # compute the correct unit cell
    atu, b, xcore, a = fcc_110_plane(species)
    # multiply the cell to fit a ball of radius a/√2 * R inside

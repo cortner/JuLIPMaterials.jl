@@ -4,6 +4,8 @@ include("common.jl")
 
 include("CLE.jl")
 
+include("CauchyBorn.jl")
+
 include("FCC.jl")
 
 include("Si.jl")
