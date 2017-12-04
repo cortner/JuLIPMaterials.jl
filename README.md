@@ -17,7 +17,7 @@ dislocations.
 
 * Atomistic Dislocation predictors:
    - Pure Edge Dislocation in FCC: `examples/Edge Dislocation FCC 110.ipynb`
-
+   - Pure Edge Dislocation in Si (face-centered diamond-cubic):  `examples/Edge Dislocation Si 110.ipynb`
 
 
 ## TODO
