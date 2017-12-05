@@ -27,27 +27,26 @@ function sw_eq()
 end
 
 
-function DpWcb(F, p, at = bulk("Si", pbc=true), sw = sw_eq())
+function DpWcb(F, p, at, calc)
     set_defm!(at, F)
     X = positions(at)
     X[2] = X[1] + p
     set_positions!(at, X)
-    return -forces(sw, at)[2]
+    return -forces(calc, at)[2]
 end
 
 
-function DpDpWcb()
-    at = bulk("Si", pbc=true)
-    sw = sw_eq()
+function DpDpWcb(at)
+    calc = calculator(at)
     F0 = defm(at)
     p0 = positions(at)[2] |> Vector
     h = 1e-5
     DpDpW = zeros(3, 3)
     for i = 1:3
         p0[i] += h
-        DpW1 = DpWcb(F0, JVecF(p0), at, sw)
+        DpW1 = DpWcb(F0, JVecF(p0), at, calc)
         p0[i] -= 2*h
-        DpW2 = DpWcb(F0, JVecF(p0), at, sw)
+        DpW2 = DpWcb(F0, JVecF(p0), at, calc)
         p0[i] += h
         DpDpW[:, i] = (DpW1 - DpW2) / (2*h)
     end
@@ -55,27 +54,29 @@ function DpDpWcb()
 end
 
 
-type WcbQuad
+type WcbQuad{TA, TF}
     DpDpW::Matrix{Float64}
     DpDpW_inv::Matrix{Float64}
-    at::AbstractAtoms
+    at::TA
     sw::StillingerWeber
-    F0
+    F0::TF
 end
 
 function WcbQuad()
-    DpDpW = DpDpWcb()
+    sw = sw_eq()
     at = bulk("Si", pbc=true)
-    return WcbQuad(DpDpW, pinv(DpDpW), at, sw_eq(), defm(at))
+    set_calculator!(at, sw)
+    DpDpW = DpDpWcb(at)
+    return WcbQuad(DpDpW, pinv(DpDpW), at, sw, defm(at))
 end
 
 function (W::WcbQuad)(F)
+    # TODO this is fishy - why is the initial position not reset?
     p0 = positions(W.at)[2]
     p1 = p0 - W.DpDpW_inv * DpWcb(F, p0, W.at, W.sw)
     p2 = p1 - W.DpDpW_inv * DpWcb(F, p1, W.at, W.sw)
     return p2
 end
-
 
 
 function DW_infp(W::WcbQuad, F)

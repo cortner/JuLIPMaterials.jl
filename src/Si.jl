@@ -6,7 +6,7 @@ module Si
 
 using JuLIP, JuLIP.ASE, JuLIP.Potentials, QuadGK, ForwardDiff
 
-import MaterialsScienceTools, MaterialsScienceTools.CauchyBorn, MaterialsScienceTools.CLE, MaterialsScienceTools.FCC
+import MaterialsScienceTools
 
 using MaterialsScienceTools.CLE: elastic_moduli, voigt_moduli,
          fourth_order_basis, sextic_roots, A_coefficients, D_coefficients,
@@ -14,7 +14,7 @@ using MaterialsScienceTools.CLE: elastic_moduli, voigt_moduli,
 
 CLE = MaterialsScienceTools.CLE
 FCC = MaterialsScienceTools.FCC
-
+CauchyBorn = MaterialsScienceTools.CauchyBorn
 
 
 """
@@ -128,7 +128,7 @@ function symml_displacement!(at, u)
     I0, I1, Idel = si_multilattice(at)
     @assert isempty(Idel)  # if Idel is not empty then (for now) we don't know what to do
     X = positions(at)
-    W = CauchyBorn.WcbQuad()
+    W = CauchyBorn.WcbQuad()   # TODO: generalise this to general calculators
     F0 = defm(W.at)
     p0 = W(F0)
     # transformation matrices
@@ -193,15 +193,14 @@ function edge110(species::AbstractString, R::Real;
 
    W = CauchyBorn.WcbQuad()
    C = elastic_moduli(W)
-   Cv2 = voigt_moduli(C)
-   Cv2 = round.(Cv2, 8)
+   Cv = round.(voigt_moduli(C), 8)
 
    if cle != :anisotropic
       error("unknown `cle` option")
    end
 
-   # edge solution
-   U = CLE.EdgeCubic(b, Cv2, a, x0 = x0)
+   # edge solution # TODO: construct this from a unit cell+calculator???
+   U = CLE.EdgeCubic(b, Cv, a, x0 = x0)
 
    if sym
       symml_displacement!(at, U)
