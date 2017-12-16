@@ -14,7 +14,10 @@ const MTen33{T} = MArray{Tuple{3,3,3},T,3,27}
 const MTen43{T} = MArray{NTuple{4,3},T,4,81}
 
 
-dist(x, dims) = vecnorm(x[dims])
+dist(x, dims::AbstractVector) = vecnorm(x[dims])
+
+# little hack to allow indexing with tuples
+dist(x, dims::Tuple) = dist(x, SVector(dims))
 
 dist{T}(x::T, y::T, dims) = dist(x - y, dims)
 
