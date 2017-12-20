@@ -1,26 +1,43 @@
 
-using JuLIP
+using JuLIP, StaticArrays
 
 export dists, cluster, strains
 
-dists{T}(X::AbstractArray{T}, dims) = [vecnorm(x[dims]) for x in X]
 
-dists{T}(X::AbstractArray{T}, dims::Tuple) = dists(X, [dims...])
+const Vec3{T} = SVector{3, T}
+const Mat3{T} = SMatrix{3,3,T}
+const Ten33{T} = SArray{Tuple{3,3,3},T,3,27}
+const Ten43{T} = SArray{NTuple{4,3},T,4,81}
+const MVec3{T} = MVector{3, T}
+const MMat3{T} = MMatrix{3,3,T}
+const MTen33{T} = MArray{Tuple{3,3,3},T,3,27}
+const MTen43{T} = MArray{NTuple{4,3},T,4,81}
 
-dists{T}(X::AbstractArray{T}, y::T, dims) = [vecnorm(x[dims] - y[dims]) for x in X]
 
-dists{T}(X::AbstractArray{T}, y::T, dims::Tuple) = dists(X, y, [dims...])
+dist(x, dims::AbstractVector) = vecnorm(x[dims])
+
+# little hack to allow indexing with tuples
+dist(x, dims::Tuple) = dist(x, SVector(dims))
+
+dist{T}(x::T, y::T, dims) = dist(x - y, dims)
+
+Base.broadcast{T}(dist, X::AbstractArray{T}, y::T, dims) =
+   [ dist(x, y, dims) for x in X ]
+
+# DEPRECATED: remove soon
+dists(varargs...) = error("`dists` has been replaced with `dist.`")
+
 
 """
 `cluster(args...; kwargs...) -> at::AbstractAtoms`
 
-Produce a circular / spherical cluster of approximately radius R. The center atom is
-always at index 1 and position 0
+Produce a circular / spherical cluster of approximately radius R. The center
+atom is always at index 1 and position 0
 
 ## Methods
 ```
-cluster(species::AbstractString, R::Real; dims=(1,2,3))
-cluster(atu::AbstractAtoms, R::Real; dims = (1,2,3))
+cluster(species::AbstractString, R::Real; dims=[1,2,3])
+cluster(atu::AbstractAtoms, R::Real; dims = [1,2,3])
 ```
 The second method assumes that there is only a single species.
 
@@ -30,12 +47,13 @@ The second method assumes that there is only a single species.
 * `dims` : dimension into which the cluster is extended, typically
    `(1,2,3)` for 3D point defects and `(1,2)` for 2D dislocations, in the
    remaining dimension(s) the b.c. will be periodic.
+* `atu` : unitcell
 
 ## TODO
  * lift the restriction of single species
  * allow other shapes
 """
-function cluster(atu::AbstractAtoms, R::Real; dims = (1,2,3))::AbstractAtoms
+function cluster(atu::AbstractAtoms, R::Real; dims = (1,2,3))
    species = JuLIP.ASE.chemical_symbols(atu)[1]
    # check that the cell is orthorombic
    Fu = defm(atu)
@@ -43,19 +61,16 @@ function cluster(atu::AbstractAtoms, R::Real; dims = (1,2,3))::AbstractAtoms
    @assert isdiag(Fu)
    @assert norm(X[1]) == 0.0   # check that the first index is the centre
    # determine by how much to multiply in each direction
-   L = [1, 1, 1]
-   for j in dims
-      L[j] = 2 * (ceil(Int, R/Fu[j,j])+3)
-   end
+   L = [ j ∈ dims ? 2 * (ceil(Int, R/Fu[j,j])+3) : 1    for j = 1:3]
    # multiply
-   at = atu * tuple(L...)
+   at = atu * L
    # and shift + swap positions
    X = [x - (Fu * floor.(L/2)) for x in positions(at)]
    i0 = find(norm.(X) .< 1e-10)[1]
    X[1], X[i0] = X[i0], X[1]
    F = diagm([Fu[j,j]*L[j] for j = 1:3])
    # carve out a cluster with mini-buffer to account for round-off
-   r = dists(X, X[1], dims)
+   r = dist.(X, X[1], dims)
    IR = find( r .<= R+sqrt(eps()) )
    # generate new positions
    Xcluster = X[IR]
@@ -78,10 +93,11 @@ function cluster(species::AbstractString, R::Real; kwargs...)::AbstractAtoms
    return cluster(atu, R; kwargs...)
 end
 
+
 """
 `strains(U, at; rcut = cutoff(calculator(at)))`
 
-maximum strains maximum( du/dr over all neighbours ) at each atom.
+returns maximum strains :  `maximum( du/dr over all neighbours )` at each atom
 """
 strains(U, at; rcut = cutoff(calculator(at))) =
    [ maximum(norm(u - U[i]) / s for (u, s) in zip(U[j], r))

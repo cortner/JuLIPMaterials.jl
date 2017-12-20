@@ -1,0 +1,152 @@
+
+
+using MaterialsScienceTools: Vec3, Mat3, Ten33, Ten43
+
+using Einsum, StaticArrays
+
+export GreenFunction, IsoGreenFcn3D, grad
+
+
+# extend `angle` to avoid going via ℂ
+Base.angle(x, y) = atan2(y, x)
+
+"convert normalised vector to spherical coordinates"
+spherical(x) = angle(x[1], x[2]), angle(norm(x[1:2]), x[3])
+
+"convert spherical to euclidean coordinates on the unit sphere"
+euclidean(φ, ψ) = Vec3(cos(ψ) * cos(φ), cos(ψ) * sin(φ), sin(ψ))
+
+"given a vector x ∈ ℝ³, return `z0, z1` where `(x/norm(x),z0,z1)` form an ONB."
+function onb{T}(x::Vec3{T})
+   x /= norm(x)
+   φ, ψ = spherical(x)
+   return Vec3{T}(-sin(φ), cos(φ), zero(T)),
+          Vec3{T}(sin(ψ)*cos(φ), sin(ψ)*sin(φ), -cos(ψ))
+end
+
+# ========== Implementation of the 3D Green's Function =============
+
+abstract type AbstractGreenFunction{T} end
+
+
+struct GreenFunction3D{T} <: AbstractGreenFunction{T}
+   Nquad::Int
+   C::Ten43{T}
+   remove_singularity::Bool
+end
+
+"""
+`GreenFunction3D`
+construct a green's function type
+"""
+function GreenFunction(C::Ten43; Nquad = nothing, remove_singularity = true)
+   if Nquad == nothing
+      error("still need to implement auto-tuning, please provide Nquad")
+   end
+   return GreenFunction3D(Nquad, C, remove_singularity)
+end
+
+GreenFunction{T}(C::Array{T, 4}; kwargs...) = GreenFunction(Ten43{T}(C); kwargs...)
+
+function (G::GreenFunction3D{T})(x) where T
+   if G.remove_singularity && norm(x) < 1e-10
+      return @SMatrix zeros(T, 3, 3)
+   end
+   return eval_green(Vec3(x), G.C, G.Nquad)
+end
+
+function grad(G::GreenFunction3D{T}, x) where T
+   if G.remove_singularity && norm(x) < 1e-10
+      return @SArray zeros(T, 3, 3, 3)
+   end
+   return grad_green(Vec3(x), G.C, G.Nquad)
+end
+
+
+"eval_green(x::Vec3, ℂ::Ten43, Nquad::Int)"
+function eval_green(x::Vec3{TT}, ℂ::Ten43, Nquad::Int) where TT
+   # allocate
+   G = @SMatrix zeros(TT, 3, 3)
+   zz = @MMatrix zeros(TT, 3,3)
+   # Initialise tensors.
+   x̂ = x/norm(x)
+   # two vectors orthogonal to x.
+   x1, x2 = onb(x̂)
+   # Integrate
+   for ω in range(0.0, pi/Nquad, Nquad)
+      z = cos(ω) * x1 + sin(ω) * x2
+      @einsum zz[i,j] = z[α] * ℂ[i,α,j,β] * z[β]
+      # Perform integration
+      G += inv(zz)
+   end
+   # Normalise appropriately
+   return G / (4*pi*norm(x)*Nquad)
+end
+
+
+function grad_green(x::Vec3{TT}, ℂ::Ten43, Nquad::Int) where TT
+   # allocate
+   DG = @MArray zeros(TT, 3, 3, 3)
+   zz = @MMatrix zeros(TT, 3, 3)
+   zT = @MMatrix zeros(TT, 3, 3)
+   # Initialise tensors.
+   x̂ = x/norm(x)
+   # two vectors orthogonal to x.
+   x1, x2 = onb(x̂)
+   # Integrate
+   for ω in range(0.0, pi/Nquad, Nquad)
+      z = cos(ω) * x1 + sin(ω) * x2
+      @einsum zz[i,j] = z[α] * ℂ[i,α,j,β] * z[β]
+      @einsum zT[i,j] = z[α] * ℂ[i,α,j,β] * x̂[β]
+      zzinv = inv(zz)
+      F = zzinv * (zT + zT') * zzinv
+      @einsum DG[i,j,k] = DG[i,j,k] + zzinv[i,j] * x̂[k] - F[i,j] * z[k]
+   end
+   DG ./= (-4.0 * pi * norm(x)^2 * Nquad)
+   return SArray(DG)
+end
+
+
+struct IsoGreenFcn3D{T} <: AbstractGreenFunction{T}
+   λ::T
+   μ::T
+   remove_singularity::Bool
+end
+
+IsoGreenFcn3D(λ, μ; remove_singularity = true) =
+   IsoGreenFcn3D(λ, μ, remove_singularity)
+
+function (G::IsoGreenFcn3D{T})(x) where T
+   if G.remove_singularity && norm(x) < 1e-10
+      return @SMatrix zeros(T, 3, 3)
+   end
+   return eval_greeniso(Vec3(x), G.λ, G.μ)
+end
+
+function grad(G::IsoGreenFcn3D{T}, x) where T
+   if G.remove_singularity && norm(x) < 1e-10
+      return @SArray zeros(T, 3, 3, 3)
+   end
+   return grad_greeniso(Vec3{T}(x), G.λ, G.μ)
+end
+
+
+"isotropic CLE Green's function"
+function eval_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T
+   Id = @SMatrix eye(T, 3)
+   x̂ = x/norm(x)
+   return (((λ+3*μ)/(λ+2*μ)/norm(x)) * Id  +
+               ((λ+μ)/(λ+2*μ)/norm(x)) * x̂ * x̂') / (8.0*π*μ)
+end
+
+"gradient of isotropic CLE Green's function"
+function grad_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T
+   DG = @MArray zeros(T, 3, 3, 3)
+   Id = @SArray eye(T, 3)
+   x̂ = x / norm(x)
+   for i = 1:3, j = 1:3, k = 1:3
+      DG[i,j,k] = (λ+μ) * (Id[i,k] * x̂[j] + Id[j,k] * x̂[i]) - (λ+3*μ) * Id[i,j] * x̂[k] - 3*(λ+μ) * x̂[i] * x̂[j] * x̂[k]
+   end
+   DG ./= 8 * π * μ*(λ+2*μ) * norm(x)^2
+   return DG
+end
