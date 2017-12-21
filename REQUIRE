@@ -1,3 +1,5 @@
 julia 0.5
 JuLIP
 QuadGK
+Einsum
+GaussQuadrature
