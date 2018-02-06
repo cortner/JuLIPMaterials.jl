@@ -20,7 +20,7 @@ not be the isotropic elasticity solution.
 function u_edge_isotropic(x, y, b, ν)
     r² = x.^2 + y.^2
     ux = b/(2*π) * ( angle.(x + im*y) + (x .* y) ./ (2*(1-ν) * r²) )
-    uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log.(r²) + - 2 * y.^2 ./ (4*(1-ν) * r²) )
+    uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log.(r²) - 2 * y.^2 ./ (4*(1-ν) * r²) )
     return ux, uy
 end
 

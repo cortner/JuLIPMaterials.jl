@@ -10,24 +10,25 @@ import MaterialsScienceTools.CLE: elastic_moduli
 export WcbQuad
 
 
-"a fully equilibrated SW potential"
-function sw_eq()
-    T(σ, at) = trace(stress(StillingerWeber(σ=σ), at))
-    at = JuLIP.ASE.bulk("Si", pbc=true)
-    r0 = 2.09474
-    r1 = r0 - 0.1
-    s0, s1 = T(r0, at), T(r1, at)
-    while (abs(s1) > 1e-8) && abs(r0 - r1) > 1e-8
-        rnew = (r0 * s1 - r1 * s0) / (s1 - s0)
-        r0, r1 = r1, rnew
-        s0, s1 = s1, T(rnew, at)
-    end
-#     @show r1
-    return StillingerWeber(σ=r1)
-end
+# "a fully equilibrated SW potential"
+# function sw_eq()
+#     T(σ, at) = trace(stress(StillingerWeber(σ=σ), at))
+#     at = JuLIP.ASE.bulk("Si", pbc=true)
+#     r0 = 2.09474
+#     r1 = r0 - 0.1
+#     s0, s1 = T(r0, at), T(r1, at)
+#     while (abs(s1) > 1e-8) && abs(r0 - r1) > 1e-8
+#         rnew = (r0 * s1 - r1 * s0) / (s1 - s0)
+#         r0, r1 = r1, rnew
+#         s0, s1 = s1, T(rnew, at)
+#     end
+# #     @show r1
+#     return StillingerWeber(σ=r1)
+# end
 
 
 function DpWcb(F, p, at, calc)
+    @assert length(at) == 2
     set_defm!(at, F)
     X = positions(at)
     X[2] = X[1] + p
@@ -54,27 +55,28 @@ function DpDpWcb(at)
 end
 
 
-type WcbQuad{TA, TF}
+type WcbQuad{TA, TF, TC}
     DpDpW::Matrix{Float64}
     DpDpW_inv::Matrix{Float64}
     at::TA
-    sw::StillingerWeber
+    calc::TC
     F0::TF
 end
 
-function WcbQuad()
-    sw = sw_eq()
+function WcbQuad(calc)
+    # sw = sw_eq()
     at = bulk("Si", pbc=true)
-    set_calculator!(at, sw)
+    set_calculator!(at, calc)
     DpDpW = DpDpWcb(at)
-    return WcbQuad(DpDpW, pinv(DpDpW), at, sw, defm(at))
+    return WcbQuad(DpDpW, pinv(DpDpW), at, calc, defm(at))
 end
 
+# TODO: replace with get_shift
 function (W::WcbQuad)(F)
     # TODO this is fishy - why is the initial position not reset?
     p0 = positions(W.at)[2]
-    p1 = p0 - W.DpDpW_inv * DpWcb(F, p0, W.at, W.sw)
-    p2 = p1 - W.DpDpW_inv * DpWcb(F, p1, W.at, W.sw)
+    p1 = p0 - W.DpDpW_inv * DpWcb(F, p0, W.at, W.calc)
+    p2 = p1 - W.DpDpW_inv * DpWcb(F, p1, W.at, W.calc)
     return p2
 end
 
@@ -86,7 +88,7 @@ function DW_infp(W::WcbQuad, F)
     X = positions(at)
     X[2] = p
     set_positions!(at, X)
-    return stress(W.sw, at)
+    return stress(W.calc, at)
 end
 
 

@@ -1,4 +1,5 @@
 
+
 # TODO: this is really a module for face-centered diamond-cubic
 #       and over time it should become much more general of course
 
@@ -18,7 +19,7 @@ CauchyBorn = MaterialsScienceTools.CauchyBorn
 
 
 """
-`si110_plane(s::AbstractString) -> at::ASEAtoms, b, xcore `
+`si110_plane(s::AbstractString) -> at::ASEAtoms, b, xcore, a `
 
 Generates a unit cell for an FCC crystal with orthogonal cell vectors chosen
 such that the F1 direction is the burgers vector and the F3 direction the normal
@@ -31,29 +32,31 @@ Returns
 * `at`: Atoms object
 * `b` : Burgers vector
 * `xcore` : a core-offset (to add to any lattice position)
+* `a` : lattice parameter
 """
-function si110_plane(s::AbstractString)
+function si110_plane(s::AbstractString;
+                     a = defm(bulk(s, cubic=true))[1,1] )
    # TODO: can si110_plane be combined with FCC.fcc_110_plane?
    @assert s == "Si"
-   # ensure s is actually an FCC species
-   # check_fcc(s)
-   # get the cubic unit cell dimension
-   a = ( bulk(s, cubic=true) |> defm )[1,1]
-   #print(a)
+   # for Si, default a = 5.43
+   # TODO: ensure only that s is an FCC species
+   # ====================================================
    # construct the cell matrix
-   F = a*JMat( [ sqrt(2)/2 0    0;
-                 0   1     0;
-                 0   0    sqrt(2)/2 ] )
-   X = a*[ JVec([0.0, 0.0, 0.0]),
-         JVec([(1/2)*1/sqrt(2),1/2, 1/(2*sqrt(2))]), JVec([0, -1/4, 1/(2*sqrt(2))]),JVec([(1/2)*1/sqrt(2), 1/4, 0]) ]
+   F = a * JMat( [ sqrt(2)/2  0    0;
+                         0    1    0;
+                         0    0    sqrt(2)/2 ] )
+   X = a * [ JVec([         0.0,   0.0,          0.0 ]),
+             JVec([ 0.5/sqrt(2),   0.5,  0.5/sqrt(2) ]),
+             JVec([         0.0, -0.25,  0.5/sqrt(2) ]),
+             JVec([ 0.5/sqrt(2),  0.25,          0.0 ]) ]
    # construct ASEAtoms
    at = ASEAtoms(string(s,"4"))
    set_defm!(at, F)
    set_positions!(at, X)
    # compute a burgers vector in these coordinates
-   b =  a*sqrt(2)/2*JVec([1.0,0.0,0.0])
+   b = a * sqrt(2)/2 * JVec([1.0,0.0,0.0])
    # compute a core-offset (to add to any lattice position)
-   xcore = [-.7, 1.0, 0] # a*sqrt(2)/2 * JVec([1/2, -1/3, 0])  # [1/2, 1/3, 0]
+   xcore = [-.7, 1.0, 0] * a / 5.43
    # return the information
    return at, b, xcore, a
 end
@@ -72,21 +75,20 @@ function sw_eq()
         r0, r1 = r1, rnew
         s0, s1 = s1, T(rnew, at)
     end
-#     @show r1
     return StillingerWeber(σ=r1)
 end
 
 
-function si110_cluster(species, R)
+function si110_cluster(species, R; kwargs...)
     @assert isodd(R)   # TODO: why?
-    atu, b, _, a = si110_plane(species)
+    atu, b, _, a = si110_plane(species; kwargs...)
     at = atu * (R, R, 1)
     set_pbc!(at, (false, false, true))
     b = b[1]
     X = positions(at)
     # This choice picks the lower left and upper right atom (not site) positions
-    #   TODO I don't like the 0.1 at all
-    xcore = (1/2)*(X[length(X)-2]+X[3]) +[-1, 0.1, 0]
+    #   TODO I don't like the [-1, 0.1, 0] at all
+    xcore = (1/2)*(X[length(X)-2]+X[3]) + [-1, 0.1, 0]
     return at, b, xcore
 end
 
@@ -96,19 +98,20 @@ a function that identifies multi-lattice structure in 2 layers of bulk-Si
 (yes - very restrictive but will do for now!)
 """
 function si_multilattice(at)
+    TOL = 0.2
     J0 = Int[]
     J1 = Int[]
     Jdel = Int[]
     for (i, j, r, R, _) in sites(at, rnn("Si")+0.1)
         foundneig = false
         for (jj, RR) in zip(j, R)
-            if (RR[1] == 0.0) && (abs(RR[2] - 1.3575) < 1e-3)
+            if (RR[1] == 0.0) && (abs(RR[2] - 1.3575) < TOL)
                 # neighbour above >> make (i, jj) a site
                 push!(J0, i)
                 push!(J1, jj)
                 foundneig = true
                 break
-            elseif (RR[1] == 0.0) && (abs(RR[2] + 1.3575) < 1e-3)
+            elseif (RR[1] == 0.0) && (abs(RR[2] + 1.3575) < TOL)
                 # neighbour below >> (jj, i) is a site that will be pushed when i ↔ jj
                 foundneig = true
                 break
@@ -128,7 +131,7 @@ function symml_displacement!(at, u)
     I0, I1, Idel = si_multilattice(at)
     @assert isempty(Idel)  # if Idel is not empty then (for now) we don't know what to do
     X = positions(at)
-    W = CauchyBorn.WcbQuad()   # TODO: generalise this to general calculators
+    W = CauchyBorn.WcbQuad(calculator(at))   # TODO: generalise this to general calculators
     F0 = defm(W.at)
     p0 = W(F0)
     # transformation matrices
@@ -152,7 +155,7 @@ function ml_displacement!(at, u)
     I0, I1, Idel = si_multilattice(at)
     @assert isempty(Idel)  # if Idel is not empty then (for now) we don't know what to do
     X = positions(at)
-    W = CauchyBorn.WcbQuad()
+    W = CauchyBorn.WcbQuad(calculator(at))
 
     # transformation matrices
     Tp = [0 1/√2  -1/√2; 1 0 0; 0 1/√2 1/√2]
@@ -175,40 +178,64 @@ end
 
 
 
-
 """
 `edge110` : produces a high-quality CLE solution for an edge dislocation
 in bulk silicon, 110 orientation.
+
+## Keyword Arguments
+
+* a : lattice parameter, default value is the default lattice parameter of the species, other allows values are `:equilibrate`
 """
 function edge110(species::AbstractString, R::Real;
                   truncate=true, cle=:anisotropic, ν=0.25,
                   calc=sw_eq(), sym = true,
                   TOL=1e-4, zDir=1,
-                  eos_correction = true)
+                  eos_correction = true,
+                  a = defm(bulk(species, cubic=true))[1,1])
 
    @assert species == "Si"
+
+   # compute the lattice parameter
+   if a == :equilibrate
+       atu = bulk(species, cubic=true, pbc=true)
+       set_calculator!(atu, calc)
+       set_constraint!(atu, VariableCell(atu))
+       minimise!(atu)
+       a = defm(atu)[1,1]
+   end
+
    # setup undeformed geometry
-   at, b, x0 = si110_cluster(species, R)
-   a = cell(bulk(species, cubic=true))[1,1]   # lattice parameter
+   at, b, x0 = si110_cluster(species, R; a = a)
+   set_calculator!(at, calc)
 
-   W = CauchyBorn.WcbQuad()
-   C = elastic_moduli(W)
-   Cv = round.(voigt_moduli(C), 8)
 
-   if cle != :anisotropic
+   if cle == :anisotropic
+      W = CauchyBorn.WcbQuad(calc)
+      C = elastic_moduli(W)
+      Cv = round.(voigt_moduli(C), 8)
+      U = CLE.EdgeCubic(b, Cv, a, x0 = x0)
+   elseif cle == :isotropic
+      @assert sym == nothing
+      U = xx -> ([CLE.u_edge_isotropic(xx[1]-x0[1], xx[2]-x0[2], b, ν)...; 0.0], nothing)
+   else
       error("unknown `cle` option")
    end
 
-   # edge solution # TODO: construct this from a unit cell+calculator???
-   U = CLE.EdgeCubic(b, Cv, a, x0 = x0)
-
-   if sym
+   if sym == true
+      @assert cle == :anisotropic
       symml_displacement!(at, U)
-   else
+   elseif sym == false
+      @assert cle == :anisotropic
       ml_displacement!(at, U)
+   elseif sym == nothing
+      X = positions(at)
+      for (i,x) in enumerate(X)
+         X[i] += U(x)[1]
+      end
+      set_positions!(at, X)
+   else
+      error("edge110: unknown parameters sym = $(sym)")
    end
-
-   set_calculator!(at, calc)
 
    return at, x0
 end
