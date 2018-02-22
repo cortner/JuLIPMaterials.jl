@@ -4,6 +4,46 @@
 # we need this to evaluate the annoying integrand in the displacement field
 using GaussQuadrature: chebyshev
 
+export Dislocation
+
+abstract type AbstractDislocation{T} end
+
+struct Dislocation3D{T} <: AbstractDislocation{T}
+   Nquad::Int
+   b::Vec3{T}
+   t::Vec3{T}
+   C::Ten43{T}
+   remove_singularity::Bool
+end
+
+"""
+`Dislocation3D`
+construct a dislocation type
+"""
+function Dislocation(b::Vec3, t::Vec3, C::Ten43; Nquad = nothing, remove_singularity = true)
+   if Nquad == nothing
+      error("still need to implement auto-tuning, please provide Nquad")
+   end
+   return Dislocation3D(Nquad, b, t, C, remove_singularity)
+end
+
+Dislocation{T}(b::Array{T,1},t::Array{T,1},C::Array{T, 4}; kwargs...) = Dislocation(Vec3{T}(b),Vec3{T}(t),Ten43{T}(C); kwargs...)
+
+function (Disl::Dislocation3D{T})(x) where T
+   if Disl.remove_singularity && norm(x) < 1e-10
+      return @SVector zeros(T, 3)
+   end
+   return eval_dislocation(Vec3(x), Disl.b, Disl.t, Disl.C, Disl.Nquad)
+end
+
+function grad(Disl::Dislocation3D{T}, x) where T
+   if Disl.remove_singularity && norm(x) < 1e-10
+      return @SMatrix zeros(T, 3, 3)
+   end
+   return grad_dislocation(Vec3(x), Disl.b, Disl.t, Disl.C, Disl.Nquad)
+end
+
+
 
 # ========== Edge dislocation isotropic solid ==============
 
