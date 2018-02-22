@@ -12,7 +12,7 @@ include("Si.jl")
 
 include("Testing.jl")
 
-# include("BCC.jl")
+include("BCC.jl")
 
 # include("TriangularLattice.jl")
 
