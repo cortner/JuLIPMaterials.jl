@@ -80,7 +80,6 @@ for (G, id, C) in [
             (CLE.GreenFunction(Crand, Nquad = 30), "GreenFunction(30)", Crand) ]
    print("G = $id: test normalisation of G: ")
    err = 0.0
-   G0 = CLE.GreenFunction(C, Nquad = 30)
 
    # Test normal derivative integral over sphere via Gaussian quadrature
    # (Could use Lebedev, but no obvious Julia package)
@@ -90,7 +89,7 @@ for (G, id, C) in [
    DGnu = zeros(3,3)
    for ω in range(0.0, pi/n, 2*n), i=1:n
       x = [sqrt(1-c[i]^2)*cos(ω),sqrt(1-c[i]^2)*sin(ω),c[i]]
-      @einsum DGnu[a,b]  = C[a,β,γ,δ] * CLE.grad(G0,x)[b,γ,δ] * x[β]
+      @einsum DGnu[a,b]  = C[a,β,γ,δ] * CLE.grad(G,x)[b,γ,δ] * x[β]
       I -= DGnu*w[i]
    end
    I = I*pi/n
