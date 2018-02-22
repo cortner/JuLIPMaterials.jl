@@ -73,7 +73,7 @@ function QSB(C, m0::Vec3{TT}, n0::Vec3{TT}, Nquad) where TT
    nn, nm, mm = zero(MMat3{TT}), zero(MMat3{TT}), zero(MMat3{TT})
    for ω in range(0, pi/Nquad, Nquad)
       m = cos(ω) * m0 + sin(ω) * n0
-      n = sin(ω) * m0 + cos(ω) * n0
+      n = sin(ω) * m0 - cos(ω) * n0
       @einsum nn[i,j] = n[α] * C[i,α,j,β] * n[β]
       @einsum nm[i,j] = n[α] * C[i,α,j,β] * m[β]
       @einsum mm[i,j] = m[α] * C[i,α,j,β] * m[β]
@@ -83,7 +83,7 @@ function QSB(C, m0::Vec3{TT}, n0::Vec3{TT}, Nquad) where TT
       B += mm - nm' * nn⁻¹ * nm           # (3.6.9) and using  mn = nm'
                                           #         (TODO: potential bug?)
    end
-   return Q * (-1/Nquad), S * (-1/Nquad), B * (1/4/Nquad/pi)
+   return Q * (-1/Nquad), S * (-1/Nquad), B * (1/(4*π*Nquad))
 end
 
 
@@ -94,7 +94,7 @@ function eval_dislocation(x::AbstractVector{TT}, b, t, C, Nquad=10) where TT
    x -= (t ⋅ x) * t
    # construct the ONB (t, m, n), the first vector is t,
    m = x / norm(x)   # p.145, l.7
-   n = t × m
+   n = m × t
    # compute x ⤅ (r, ω)
    r = norm(x)
    m0, n0 = onb(t)      # fixed coordinate system w.r.t which we compute ω
@@ -110,11 +110,11 @@ function eval_dislocation(x::AbstractVector{TT}, b, t, C, Nquad=10) where TT
    _, S, B = QSB(C, m, n, Nquad)
    # get a quadrature formula (with a little extra accuracy) + rescale
    Xquad, Wquad = chebyshev(Float64, Nquad+2)
-   Xquad = (1.0 + Xquad) / 2.0 * ω    # now Xquad ranges from 0.0 to 2 ω
+   Xquad = ω * (1.0 + Xquad) / 2.0     # now Xquad ranges from 0.0 to ω
    Wquad = Wquad * (ω / sum(Wquad))
    for (ξ, dξ) in zip(Xquad, Wquad)
-      a = cos(ξ) * m + sin(ξ) * n
-      b = sin(ξ) * m + cos(ξ) * n
+      a = cos(ξ) * m0 + sin(ξ) * n0
+      b = sin(ξ) * m0 - cos(ξ) * n0
       @einsum nn[i,j] = a[α] * C[i,α,j,β] * a[β]
       @einsum nm[i,j] = a[α] * C[i,α,j,β] * b[β]
       nn⁻¹ = inv(nn)
@@ -149,13 +149,13 @@ function grad_dislocation(x::AbstractVector{TT}, b, t, C, Nquad=10) where TT
    x -= (x⋅t) * t
    r = norm(x)
    m = x / norm(x)
-   n = m × t
+   n = t × m
    #  Implement (4.1.16)
    nn, nm, mm = zero(MMat3{TT}), zero(MMat3{TT}), zero(MMat3{TT})
    @einsum nn[i,j] = n[α] * C[i,α,j,β] * n[β]
    @einsum nm[i,j] = n[α] * C[i,α,j,β] * m[β]
    nn⁻¹ = inv(nn)
-   Du = 1/(2*π*r) * ( kron((- S * b),m') + kron(((nn⁻¹*(2*π*B + nm*S)) * b),n') )
+   Du = 1/(2*π*r) * ( kron( (-S*b) ,m' ) + kron(nn⁻¹*(4*π*B + nm*S)*b,n') )
    return Mat3(Du)
 end
 
