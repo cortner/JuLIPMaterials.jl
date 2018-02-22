@@ -43,27 +43,22 @@ function grad(Disl::Dislocation3D{T}, x) where T
    return grad_dislocation(Vec3(x), Disl.b, Disl.t, Disl.C, Disl.Nquad)
 end
 
-
-
 # ========== Edge dislocation isotropic solid ==============
-
 """
 `u_edge_isotropic(x, y, b, ν) -> u_x, u_y`
-
 compute the displacement field `ux, uy` for an edge dislocation in an
 isotropic linearly elastic medium, with core at (0,0),
 burgers vector `b * [1.0;0.0]` and Poisson ratio `ν`
-
 This is to be used primarily for comparison, since the exact solution will
 not be the isotropic elasticity solution.
 """
 function u_edge_isotropic(x, y, b, ν)
+    warn("This function is to be replaced by new Isotropic Edge Dislocation type")
     r² = x.^2 + y.^2
     ux = b/(2*π) * ( angle.(x + im*y) + (x .* y) ./ (2*(1-ν) * r²) )
     uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log.(r²) - 2 * y.^2 ./ (4*(1-ν) * r²) )
     return ux, uy
 end
-
 
 # ========== The Stroh / Hirth&Lothe Horror! =======================
 
@@ -161,4 +156,99 @@ function grad_dislocation(x::AbstractVector{TT}, b, t, C, Nquad=10) where TT
    @einsum nm[i,j] = n[α] * C[i,α,j,β] * m[β]
    Du = 1/(2*π*r) * ( (- S * b) ⊗ m + (nn⁻¹ * ((2*π*B + nm*S) * b)) ⊗ n )
    return Mat3(Du)
+end
+
+# ========== Edge dislocation isotropic solid ==============
+
+struct IsoEdgeDislocation3D{T} <: AbstractDislocation{T}
+   λ::T
+   μ::T
+   b::T
+   remove_singularity::Bool
+end
+
+IsoEdgeDislocation3D(λ, μ, b; remove_singularity = true) =
+   IsoEdgeDislocation3D(λ, μ, b, remove_singularity)
+
+function (Disl::IsoEdgeDislocation3D{T})(x) where T
+   if Disl.remove_singularity && norm(x) < 1e-10
+      return @SVector zeros(T, 3)
+   end
+   return eval_isoedge(Vec3(x), Disl.b, Disl.λ, Disl.μ)
+end
+
+function grad(Disl::IsoEdgeDislocation3D{T}, x) where T
+   if Disl.remove_singularity && norm(x) < 1e-10
+      return @SMatrix zeros(T, 3, 3)
+   end
+   return grad_isoedge(Vec3{T}(x), Disl.λ, Disl.μ)
+end
+
+"Isotropic CLE Edge dislocation"
+function eval_isoedge(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
+   u = @SVector zeros(T,3)
+   # Compute Poisson ration
+   ν = λ/(2*(λ+μ))
+   r² = dot(x[1:2],x[1:2])
+   u[1] = b/(2*π) * (angle.(x[1] + im*x[2]) + (x[1].*x[2])./(2*(1-ν) * r²))
+   u[2] = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log.(r²) - 2*x[2].^2 ./(4*(1-ν)*r²))
+   return u
+end
+
+"displacement gradient due to isotropic CLE Edge dislocation"
+function grad_isoedge(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
+   Du = @SMatrix zeros(T,3,3)
+   # Compute Poisson ration
+   ν = λ/(2*(λ+μ))
+   r² = dot(x[1:2],x[1:2])
+   r⁴ = (r²).^2
+   Du[1,1] = b/(2*π) * ( (2*ν-1)/(2*(1-ν)) * x[2] / r² -  x[1].^2.*x[2]./((1-ν)*r⁴))
+   Du[1,2] = b/(2*π) * ( (3-2*ν)/(2*(1-ν)) * x[1] / r² -  x[1].*x[2].^2./((1-ν)*r⁴))
+   Du[2,1] = -b/(2*π) * ( x[1]/r² + (x[1]*(x[2].^2-x[1].^2))/(2*(1-ν)*r⁴))
+   Du[2,2] = b/(2*π) * ( ν*x[2]/((1-ν)*r²) + (x[2]*(x[1].^2-x[2].^2))/(2*(1-ν)*r⁴))
+   return Du
+end
+
+# ========== Edge dislocation isotropic solid ==============
+
+struct IsoScrewDislocation3D{T} <: AbstractDislocation{T}
+   λ::T
+   μ::T
+   b::T
+   remove_singularity::Bool
+end
+
+IsoScrewDislocation3D(λ, μ, b; remove_singularity = true) =
+   IsoScrewDislocation3D(λ, μ, b, remove_singularity)
+
+function (Disl::IsoScrewDislocation3D{T})(x) where T
+   if Disl.remove_singularity && norm(x) < 1e-10
+      return @SVector zeros(T, 3)
+   end
+   return eval_isoscrew(Vec3(x), Disl.b, Disl.λ, Disl.μ)
+end
+
+function grad(Disl::IsoScrewDislocation3D{T}, x) where T
+   if Disl.remove_singularity && norm(x) < 1e-10
+      return @SMatrix zeros(T, 3, 3)
+   end
+   return grad_isoscrew(Vec3{T}(x), Disl.λ, Disl.μ)
+end
+
+"Isotropic CLE Screw dislocation"
+function eval_isoscrew(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
+   u = @SVector zeros(T,3)
+   # Compute Poisson ration
+   u[3] = b/(2*π) * (angle.(x[1] + im*x[2])
+   return u
+end
+
+"displacement gradient due to isotropic CLE Screw dislocation"
+function grad_isoscrew(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
+   Du = @SMatrix zeros(T,3,3)
+   # Compute Poisson ration
+   r² = dot(x[1:2],x[1:2])
+   Du[3,1] = b/(2*π) * ( -x[2] / r² )
+   Du[3,2] =  b/(2*π) * ( x[1] / r² )
+   return Du
 end
