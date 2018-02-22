@@ -239,7 +239,7 @@ end
 function eval_isoscrew(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
    u = @SVector zeros(T,3)
    # Compute Poisson ration
-   u[3] = b/(2*π) * (angle.(x[1] + im*x[2])
+   u[3] = b/(2*π) * (angle.(x[1] + im*x[2]))
    return u
 end
 
