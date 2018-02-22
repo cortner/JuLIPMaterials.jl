@@ -2,9 +2,11 @@
 # TODO: this is not at all tested yet!!!!!!!
 
 # we need this to evaluate the annoying integrand in the displacement field
+using MaterialsScienceTools: Vec3, Mat3, Ten33, Ten43
+using Einsum, StaticArrays
 using GaussQuadrature: chebyshev
 
-export Dislocation
+export Dislocation, IsoEdgeDislocation3D, IsoScrewDislocation3D
 
 abstract type AbstractDislocation{T} end
 
@@ -86,15 +88,13 @@ end
 
 
 function eval_dislocation(x::AbstractVector{TT}, b, t, C, Nquad=10) where TT
-   # convert inputs (if needed)
-   x, b, t, C = Vec3(x), Vec3(b), Vec3(t), Ten43(C)
    # normalise dislocation tangent direction
    t /= norm(t)
    # project x into the plane normal to t, this will not change the value of u
    x -= (t ⋅ x) * t
    # construct the ONB (t, m, n), the first vector is t,
    m = x / norm(x)   # p.145, l.7
-   n = t × n
+   n = t × m
    # compute x ⤅ (r, ω)
    r = norm(x)
    m0, n0 = onb(t)      # fixed coordinate system w.r.t which we compute ω
@@ -140,10 +140,10 @@ end
 
 
 function grad_dislocation(x::AbstractVector{TT}, b, t, C, Nquad=10) where TT
-   x, b, t, C = Vec3(x), Vec3(b), Vec3(t), Ten43(C)
+   #x, b, t, C = Vec3(x), Vec3(b), Vec3(t), Ten43(C)
    t /= norm(t)
    m0, n0 = onb(t)   # some refrence ONB for computing Q, S, B
-   Q, S, B = QSB(m0, n0, Nquad)
+   Q, S, B = QSB(C, m0, n0, Nquad)
    # compute displacement gradient
    # project x to the (m0, n0) plane and compute the (m, n) vectors
    x -= (x⋅t) * t
@@ -154,7 +154,8 @@ function grad_dislocation(x::AbstractVector{TT}, b, t, C, Nquad=10) where TT
    nn, nm, mm = zero(MMat3{TT}), zero(MMat3{TT}), zero(MMat3{TT})
    @einsum nn[i,j] = n[α] * C[i,α,j,β] * n[β]
    @einsum nm[i,j] = n[α] * C[i,α,j,β] * m[β]
-   Du = 1/(2*π*r) * ( (- S * b) ⊗ m + (nn⁻¹ * ((2*π*B + nm*S) * b)) ⊗ n )
+   nn⁻¹ = inv(nn)
+   Du = 1/(2*π*r) * ( kron((- S * b),m') + kron(((nn⁻¹*(2*π*B + nm*S)) * b),n') )
    return Mat3(Du)
 end
 
@@ -181,24 +182,24 @@ function grad(Disl::IsoEdgeDislocation3D{T}, x) where T
    if Disl.remove_singularity && norm(x) < 1e-10
       return @SMatrix zeros(T, 3, 3)
    end
-   return grad_isoedge(Vec3{T}(x), Disl.λ, Disl.μ)
+   return grad_isoedge(Vec3{T}(x), Disl.b, Disl.λ, Disl.μ)
 end
 
 "Isotropic CLE Edge dislocation"
 function eval_isoedge(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
-   u = @SVector zeros(T,3)
-   # Compute Poisson ration
+   u = zeros(T,3)
+   # Compute Poisson ratio
    ν = λ/(2*(λ+μ))
    r² = dot(x[1:2],x[1:2])
    u[1] = b/(2*π) * (angle.(x[1] + im*x[2]) + (x[1].*x[2])./(2*(1-ν) * r²))
    u[2] = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log.(r²) - 2*x[2].^2 ./(4*(1-ν)*r²))
-   return u
+   return Vec3(u)
 end
 
 "displacement gradient due to isotropic CLE Edge dislocation"
 function grad_isoedge(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
-   Du = @SMatrix zeros(T,3,3)
-   # Compute Poisson ration
+   Du = zeros(T,3,3)
+   # Compute Poisson ratio
    ν = λ/(2*(λ+μ))
    r² = dot(x[1:2],x[1:2])
    r⁴ = (r²).^2
@@ -206,7 +207,7 @@ function grad_isoedge(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
    Du[1,2] = b/(2*π) * ( (3-2*ν)/(2*(1-ν)) * x[1] / r² -  x[1].*x[2].^2./((1-ν)*r⁴))
    Du[2,1] = -b/(2*π) * ( x[1]/r² + (x[1]*(x[2].^2-x[1].^2))/(2*(1-ν)*r⁴))
    Du[2,2] = b/(2*π) * ( ν*x[2]/((1-ν)*r²) + (x[2]*(x[1].^2-x[2].^2))/(2*(1-ν)*r⁴))
-   return Du
+   return Mat3(Du)
 end
 
 # ========== Edge dislocation isotropic solid ==============
@@ -232,23 +233,21 @@ function grad(Disl::IsoScrewDislocation3D{T}, x) where T
    if Disl.remove_singularity && norm(x) < 1e-10
       return @SMatrix zeros(T, 3, 3)
    end
-   return grad_isoscrew(Vec3{T}(x), Disl.λ, Disl.μ)
+   return grad_isoscrew(Vec3{T}(x), Disl.b, Disl.λ, Disl.μ)
 end
 
 "Isotropic CLE Screw dislocation"
 function eval_isoscrew(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
-   u = @SVector zeros(T,3)
-   # Compute Poisson ration
+   u = zeros(T,3)
    u[3] = b/(2*π) * (angle.(x[1] + im*x[2]))
-   return u
+   return Vec3(u)
 end
 
 "displacement gradient due to isotropic CLE Screw dislocation"
 function grad_isoscrew(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
-   Du = @SMatrix zeros(T,3,3)
-   # Compute Poisson ration
+   Du = zeros(T,3,3)
    r² = dot(x[1:2],x[1:2])
    Du[3,1] = b/(2*π) * ( -x[2] / r² )
    Du[3,2] =  b/(2*π) * ( x[1] / r² )
-   return Du
+   return Mat3(Du)
 end
