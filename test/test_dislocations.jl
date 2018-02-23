@@ -6,7 +6,7 @@ import MaterialsScienceTools
 MST = MaterialsScienceTools
 CLE = MST.CLE
 
-using CLE: grad
+using CLE: grad, onb, QSB
 using MST.Testing
 using Einsum
 
@@ -19,11 +19,40 @@ println("---------------------------------------------------------------")
 μ = 1.0 + rand()
 Ciso = CLE.isotropic_moduli(λ, μ)
 
+# TODO: Should probably not be in this set of tests
+println("Test basis orientation implemented correctly: ")
+maxerr = 0.0
+for n = 1:10
+   a = randvec3()
+   a /= norm(a)
+   b,c = onb(MST.Vec3(a))
+   maxerr = max( maxerr, abs( (a×b)⋅c - 1.0 ) )
+end
+println("maxerr = $maxerr")
+@test maxerr < 1e-12
+
+# TODO: Should probably not be in this set of tests
+println("Test implementation of Q,S,B matrices using BBS (3.6.20-21): ")
+maxerr_1 = 0.0
+maxerr_2 = 0.0
+for n = 1:10
+   a = randvec3()
+   a /= norm(a)
+   b,c = onb(MST.Vec3(a))
+   Q,S,B = QSB(Ciso,b,c,30)
+   maxerr_1 = max( maxerr_1, vecnorm(4*π*B*Q+S*S + eye(3), Inf) )
+   maxerr_2 = max( maxerr_2, vecnorm(Q*S'+S*Q, Inf) )
+end
+println("maxerr_1 = $maxerr_1")
+println("maxerr_2 = $maxerr_2")
+@test maxerr_1 < 1e-12
+@test maxerr_2 < 1e-12
+
 # Test explicit formulae vs anistropic ones
-print("Test agreement between anisotopic and isotropic edge dislocation: ")
+println("Test agreement between anisotopic and isotropic edge dislocation: ")
 b = [1.0,0.0,0.0]
 t = [0.0,0.0,1.0]
-u0 = CLE.Dislocation(b, t, Ciso, Nquad = 30)
+u0 = CLE.Dislocation(b, t, Ciso, Nquad = 40)
 uedge = CLE.IsoEdgeDislocation3D(λ, μ, b[1])
 maxerr = 0.0
 maxerr_g = 0.0
@@ -36,7 +65,7 @@ println("maxerr = $maxerr, maxerr_g = $maxerr_g")
 @test maxerr < 1e-12
 @test maxerr_g < 1e-12
 
-print("Test agreement between anisotopic and isotropic screw dislocation: ")
+println("Test agreement between anisotopic and isotropic screw dislocation: ")
 Ciso = CLE.isotropic_moduli(λ, μ)
 b = [0.0,0.0,1.0]
 t = [0.0,0.0,1.0]
@@ -57,17 +86,15 @@ println("maxerr = $maxerr, maxerr_g = $maxerr_g")
 # Random elastic moduli
 Crand = randmoduli()
 # Generate a random dislocation
-θ₁ = 4*π*rand()
-ϕ₁ = π*rand()
-θ₂ = 4*π*rand()
-ϕ₂ = π*rand()
-b = [cos(θ₁)*sin(ϕ₁),sin(θ₁)*sin(ϕ₁),cos(ϕ₁)]
-t = [cos(θ₂)*sin(ϕ₂),sin(θ₂)*sin(ϕ₂),cos(ϕ₂)]
+b = randvec3();
+b /= norm(b);
+t = randvec3();
+t /= norm(t);
 
 
 for (Disl, id, C) in [ (CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocation3D", Ciso),
          (CLE.IsoScrewDislocation3D(λ, μ, 1.0), "IsoScrewDislocation3D", Ciso),
-         (CLE.Dislocation(b,t,Crand, Nquad = 30), "Dislocation(30)", Crand) ]
+         (CLE.Dislocation(b,t,Crand, Nquad = 40), "Dislocation(30)", Crand) ]
    print("u = $id : test that ∇u is consistent with u: ")
    maxerr = 0.0
    for n = 1:10
@@ -84,11 +111,11 @@ end
 
 for (Disl, id, C) in [(CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocation3D", Ciso),
          (CLE.IsoScrewDislocation3D(λ, μ, 1.0), "IsoScrewDislocation3D", Ciso),
-         (CLE.Dislocation(b,t,Crand, Nquad = 30), "Dislocation(30)", Crand) ]
-   print("u = $id: test that u satisfies the PDE: ")
+         (CLE.Dislocation(b,t,Crand, Nquad = 40), "Dislocation(30)", Crand) ]
+   println("u = $id: test that u satisfies the PDE: ")
    maxerr = 0.0
    for n = 1:10
-      a, x = randvec3(), randvec3()
+      x = randvec3()
       u = x_ -> Disl(x_)
       maxerr = max( vecnorm(cleforce(x, u, C), Inf), maxerr )
    end
@@ -98,7 +125,7 @@ end
 
 # Test Burgers vector
 Disl = CLE.IsoEdgeDislocation3D(λ, μ, 1.0)
-print("u = IsoEdgeDislocation3D: test Burgers vector: ")
+println("u = IsoEdgeDislocation3D: test Burgers vector: ")
 err = 0.0
 # Integrate around loop
 n = 30;
@@ -115,7 +142,7 @@ println("maxerr = $maxerr")
 @test maxerr < 1e-12
 
 Disl = CLE.IsoScrewDislocation3D(λ, μ, 1.0)
-print("u = IsoScrewDislocation3D: test Burgers vector: ")
+println("u = IsoScrewDislocation3D: test Burgers vector: ")
 err = 0.0
 # Integrate around loop
 n = 30;
@@ -132,7 +159,7 @@ println("maxerr = $maxerr")
 @test maxerr < 1e-12
 
 Disl = CLE.Dislocation(b,[0.0,0.0,1.0],Crand, Nquad = 40)
-print("u = Dislocation(30): test Burgers vector: ")
+println("u = Dislocation(30): test Burgers vector: ")
 err = 0.0
 # Integrate around loop
 n = 30;
