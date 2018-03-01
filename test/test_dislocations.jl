@@ -82,7 +82,7 @@ Ciso = CLE.isotropic_moduli(λ, μ)
 b = [0.0,0.0,1.0]
 t = [0.0,0.0,1.0]
 u0 = CLE.Dislocation(b, t, Ciso, Nquad = 40)
-uscrew = CLE.IsoScrewDislocation3D(λ, μ, b[3])
+uscrew = CLE.IsoScrewDislocation3D(b[3])
 maxerr = 0.0
 maxerr_g = 0.0
 for n = 1:10
@@ -105,7 +105,7 @@ t /= norm(t);
 
 # Test gradient implementation matches displacement implementation
 for (Disl, id, C) in [ (CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocation3D", Ciso),
-         (CLE.IsoScrewDislocation3D(λ, μ, 1.0), "IsoScrewDislocation3D", Ciso),
+         (CLE.IsoScrewDislocation3D(1.0), "IsoScrewDislocation3D", Ciso),
          (CLE.Dislocation(b,t,Crand, Nquad = 40), "Dislocation(30)", Crand) ]
    print("u = $id : test that ∇u is consistent with u: ")
    maxerr = 0.0
@@ -122,7 +122,7 @@ end
 
 # Test PDE is solved in all implementations
 for (Disl, id, C) in [(CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocation3D", Ciso),
-         (CLE.IsoScrewDislocation3D(λ, μ, 1.0), "IsoScrewDislocation3D", Ciso),
+         (CLE.IsoScrewDislocation3D(1.0), "IsoScrewDislocation3D", Ciso),
          (CLE.Dislocation(b,t,Crand, Nquad = 40), "Dislocation(30)", Crand) ]
    println("u = $id: test that u satisfies the PDE: ")
    maxerr = 0.0
@@ -154,7 +154,7 @@ println("maxerr = $maxerr")
 @test maxerr < 1e-12
 
 # Test Burgers vector for screw dislocation implementation
-Disl = CLE.IsoScrewDislocation3D(λ, μ, 1.0)
+Disl = CLE.IsoScrewDislocation3D(1.0)
 println("u = IsoScrewDislocation3D: test Burgers vector: ")
 err = 0.0
 # Integrate around loop

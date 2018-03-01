@@ -1,10 +1,12 @@
 
 module BCC
 
-using MaterialsScienceTools: cluster
+using ..CLE
 using JuLIP, JuLIP.ASE
+using ..Vec3, ..Mat3, ..Ten43, ..cluster
 
 function lattice_constants_111(s::AbstractString; calc = nothing)
+   # See cell_111 for description of outputs
    if calc == nothing
       a0 = rnn(s)
    else
@@ -19,8 +21,11 @@ function lattice_constants_111(s::AbstractString; calc = nothing)
    return a0, b0, c0
 end
 
-
 function cell_111(s::AbstractString; calc=nothing)
+   # a0 is z-direction cell height
+   # b0 is x-spacing between atoms in cell
+   # c0 is y-spacing between atoms in cell
+   # Full cell is size = 3b0 × 2c0 × a0
    a0, b0, c0 = lattice_constants_111(s, calc=calc)
    X = [ [0.0, 0.0, 0.0] [b0, 0.0, a0/3] [2*b0, 0.0, 2*a0/3] [b0/2, c0, 2*a0/3] [3*b0/2, c0, 0.0] [5*b0/2, c0, a0/3] ] |> vecs
    F = diagm([3*b0, 2*c0, a0])
@@ -31,10 +36,6 @@ function cell_111(s::AbstractString; calc=nothing)
    return at
 end
 
-
-u_screw(x, y, b) = (b / (2*pi)) * angle(x + im * y)
-
-
 """
 `screw_111(s::AbstractString, R::Float64; x0=:center, layers=1)`
 
@@ -44,7 +45,7 @@ Construct a circular cluster with a screw dislocation in the centre.
 * `x0`: position of screw dislocation core, relative to a lattice site
 """
 function screw_111(s::AbstractString, R::Float64;
-            x0 = :center, layers=1, soln = :antiplane, calc = nothing,
+            x0 = :center, layers=1, soln = :anisotropic, calc = nothing,
             bsign = 1)::AbstractAtoms
    a0, b0, c0 = lattice_constants_111(s; calc=calc)
    x00 = JVecF( ([b0, 0, a0/3] + [b0/2, c0, 2*a0/3]) / 3 )
@@ -53,43 +54,46 @@ function screw_111(s::AbstractString, R::Float64;
       x0 = x00
    end
    # create a cluster
-   at = cluster(cell_111(s), R, dims=(1,2))
+   at = cluster(cell_111(s, calc=calc), R, dims=(1,2))
    at = at * (1,1,layers)
    # get positions  to manipulate them
    X = positions(at) |> mat
    # reference positions
    X0 = copy(X)
-   X0[1,:] -= x00[1]
-   X0[2,:] -= x00[2]
+   X0[1,:] -= x0[1]
+   X0[2,:] -= x0[2]
    set_info!(at, :X0, copy(X))
    # get coordinates for the dislocation predictor
    x, y = X[1,:] - x0[1], X[2,:] - x0[2]
 
    # get the screw displacement (Burgers vector = (0, 0, a0))
-   if soln == :antiplane
-      u = u_screw(x, y, bsign * a0)
+   if soln == :isotropic
+      disl = IsoScrewDislocation3D( bsign*a0, remove_singularity = true )
       # apply to `at` and return
-      X[1, :] = X0[1,:]
-      X[2, :] = X0[2,:]
-      X[3, :] += u
-   elseif soln == :vectorial
-       error("haven't yet implemented the vectorial solution")
-    #   z = X0[3,:]
-    #   u = u_screw_vectorial(x, y, z, a0)
-    #   X[:, :] += u
+      X0 = vecs(X0)
+      X = vecs(X)
+      X .+= disl.(X0)
+   elseif soln == :anisotropic
+      atu = cell_111(s)
+      set_pbc!(atu, true)
+      set_calculator!(atu, calc)
+      t = Vec3([0.0, 0.0, 1.0])
+      b = Vec3([0.0, 0.0, a0*bsign])
+      m0 = Vec3([1.0, 0.0, 0.0])
+      ℂ = CLE.elastic_moduli(atu)
+      ℂ = Ten43{Float64}(ℂ[:])
+      @show typeof(ℂ)
+      disl = CLE.Dislocation(b, t, ℂ, Nquad = 20, cut = m0, remove_singularity = true)
+      X0 = vecs(X0)
+      X = vecs(X)
+      X .+= disl.(X0)
    else
       error("unknown `soln`")
    end
 
    set_positions!(at, X)
+   @show cell(at)
    return at
-end
-
-
-
-
-function u_screw_vectorial(x, y, z, a0)
-
 end
 
 

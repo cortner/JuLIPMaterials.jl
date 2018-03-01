@@ -241,34 +241,32 @@ function grad_isoedge(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
    return Mat3(Du)
 end
 
-# ========== Edge dislocation isotropic solid ==============
+# ========== Screw dislocation isotropic solid ==============
 
 struct IsoScrewDislocation3D{T} <: AbstractDislocation{T}
-   λ::T
-   μ::T
    b::T
    remove_singularity::Bool
 end
 
-IsoScrewDislocation3D(λ, μ, b; remove_singularity = true) =
-   IsoScrewDislocation3D(λ, μ, b, remove_singularity)
+IsoScrewDislocation3D(b; remove_singularity = true) =
+   IsoScrewDislocation3D(b, remove_singularity)
 
 function (Disl::IsoScrewDislocation3D{T})(x) where T
    if Disl.remove_singularity && norm(x) < 1e-10
       return @SVector zeros(T, 3)
    end
-   return eval_isoscrew(Vec3(x), Disl.b, Disl.λ, Disl.μ)
+   return eval_isoscrew(Vec3(x), Disl.b)
 end
 
 function grad(Disl::IsoScrewDislocation3D{T}, x) where T
    if Disl.remove_singularity && norm(x) < 1e-10
       return @SMatrix zeros(T, 3, 3)
    end
-   return grad_isoscrew(Vec3{T}(x), Disl.b, Disl.λ, Disl.μ)
+   return grad_isoscrew(Vec3{T}(x), Disl.b)
 end
 
 "Isotropic CLE Screw dislocation"
-function eval_isoscrew(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
+function eval_isoscrew(x::Vec3{T}, b::Real) where T
    u = zeros(T,3)
 	θ = angle( x[1] , x[2] )
 	if θ < 0.
@@ -279,7 +277,7 @@ function eval_isoscrew(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
 end
 
 "displacement gradient due to isotropic CLE Screw dislocation"
-function grad_isoscrew(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
+function grad_isoscrew(x::Vec3{T}, b::Real) where T
    Du = zeros(T,3,3)
    r² = dot(x[1:2],x[1:2])
    Du[3,1] = b/(2*π) * ( -x[2] / r² )
