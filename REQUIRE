@@ -3,3 +3,4 @@ JuLIP
 QuadGK
 Einsum
 GaussQuadrature
+StaticArrays

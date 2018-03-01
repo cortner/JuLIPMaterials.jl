@@ -16,12 +16,12 @@ spherical(x) = angle(x[1], x[2]), angle(norm(x[1:2]), x[3])
 "convert spherical to euclidean coordinates on the unit sphere"
 euclidean(φ, ψ) = Vec3(cos(ψ) * cos(φ), cos(ψ) * sin(φ), sin(ψ))
 
-"given a vector x ∈ ℝ³, return `z0, z1` where `(x/norm(x),z0,z1)` form an ONB."
+"given a vector x ∈ ℝ³, return `z0, z1` where `(x/norm(x),z0,z1)` form a right--handed ONB."
 function onb{T}(x::Vec3{T})
    x /= norm(x)
    φ, ψ = spherical(x)
-   return Vec3{T}(-sin(φ), cos(φ), zero(T)),
-          Vec3{T}(sin(ψ)*cos(φ), sin(ψ)*sin(φ), -cos(ψ))
+   return Vec3{T}( sin(ψ)*cos(φ), sin(ψ)*sin(φ), -cos(ψ) ),
+          Vec3{T}(-sin(φ), cos(φ), zero(T) )
 end
 
 # ========== Implementation of the 3D Green's Function =============
