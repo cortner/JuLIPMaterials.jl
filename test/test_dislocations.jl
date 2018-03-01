@@ -22,6 +22,11 @@ Ciso = CLE.isotropic_moduli(λ, μ)
 # TODO: Should probably not be in this set of tests
 println("Test basis orientation implemented correctly: ")
 maxerr = 0.0
+# Check vertical
+a = [0.0,0.0,1.0]
+b,c = onb(MST.Vec3(a))
+maxerr = max( maxerr, abs( (a×b)⋅c - 1.0 ) )
+# Check random directions
 for n = 1:10
    a = randvec3()
    a /= norm(a)
@@ -31,10 +36,16 @@ end
 println("maxerr = $maxerr")
 @test maxerr < 1e-12
 
-# TODO: Should probably not be in this set of tests
-println("Test implementation of Q,S,B matrices using BBS (3.6.20-21): ")
+println("Test implementation of Q,S,B matrices using BBS formulae (3.6.20-21): ")
 maxerr_1 = 0.0
 maxerr_2 = 0.0
+# Check vertical
+a = [0.0,0.0,1.0]
+b,c = onb(MST.Vec3(a))
+Q,S,B = QSB(Ciso,b,c,30)
+maxerr_1 = max( maxerr_1, vecnorm(4*π*B*Q+S*S + eye(3), Inf) )
+maxerr_2 = max( maxerr_2, vecnorm(Q*S'+S*Q, Inf) )
+# Check random directions
 for n = 1:10
    a = randvec3()
    a /= norm(a)
@@ -48,7 +59,7 @@ println("maxerr_2 = $maxerr_2")
 @test maxerr_1 < 1e-12
 @test maxerr_2 < 1e-12
 
-# Test explicit formulae vs anistropic ones
+# Test explicit edge formula vs anistropic one
 println("Test agreement between anisotopic and isotropic edge dislocation: ")
 b = [1.0,0.0,0.0]
 t = [0.0,0.0,1.0]
@@ -65,6 +76,7 @@ println("maxerr = $maxerr, maxerr_g = $maxerr_g")
 @test maxerr < 1e-12
 @test maxerr_g < 1e-12
 
+# Test explicit screw formula vs anistropic one
 println("Test agreement between anisotopic and isotropic screw dislocation: ")
 Ciso = CLE.isotropic_moduli(λ, μ)
 b = [0.0,0.0,1.0]
@@ -83,7 +95,7 @@ println("maxerr = $maxerr, maxerr_g = $maxerr_g")
 @test maxerr_g < 1e-12
 
 
-# Random elastic moduli
+# Generate random elastic moduli
 Crand = randmoduli()
 # Generate a random dislocation
 b = randvec3();
@@ -91,7 +103,7 @@ b /= norm(b);
 t = randvec3();
 t /= norm(t);
 
-
+# Test gradient implementation matches displacement implementation
 for (Disl, id, C) in [ (CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocation3D", Ciso),
          (CLE.IsoScrewDislocation3D(λ, μ, 1.0), "IsoScrewDislocation3D", Ciso),
          (CLE.Dislocation(b,t,Crand, Nquad = 40), "Dislocation(30)", Crand) ]
@@ -108,7 +120,7 @@ for (Disl, id, C) in [ (CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocati
    @test maxerr < 1e-12
 end
 
-
+# Test PDE is solved in all implementations
 for (Disl, id, C) in [(CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocation3D", Ciso),
          (CLE.IsoScrewDislocation3D(λ, μ, 1.0), "IsoScrewDislocation3D", Ciso),
          (CLE.Dislocation(b,t,Crand, Nquad = 40), "Dislocation(30)", Crand) ]
@@ -123,7 +135,7 @@ for (Disl, id, C) in [(CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocatio
    @test maxerr < 1e-12
 end
 
-# Test Burgers vector
+# Test Burgers vector for edge dislocation implementation
 Disl = CLE.IsoEdgeDislocation3D(λ, μ, 1.0)
 println("u = IsoEdgeDislocation3D: test Burgers vector: ")
 err = 0.0
@@ -141,6 +153,7 @@ maxerr = vecnorm(I-[1.0,0.0,0.0])
 println("maxerr = $maxerr")
 @test maxerr < 1e-12
 
+# Test Burgers vector for screw dislocation implementation
 Disl = CLE.IsoScrewDislocation3D(λ, μ, 1.0)
 println("u = IsoScrewDislocation3D: test Burgers vector: ")
 err = 0.0
@@ -158,7 +171,8 @@ maxerr = vecnorm(I-[0.0,0.0,1.0])
 println("maxerr = $maxerr")
 @test maxerr < 1e-12
 
-Disl = CLE.Dislocation(b,[0.0,0.0,1.0],Crand, Nquad = 40)
+# Test Burgers vector for arbitrary anisotropic implementation
+Disl = CLE.Dislocation(b,[0.0,0.0,1.0],Crand, Nquad = 30)
 println("u = Dislocation(30): test Burgers vector: ")
 err = 0.0
 # Integrate around loop
@@ -175,6 +189,7 @@ maxerr = vecnorm(I-b)
 println("maxerr = $maxerr")
 @test maxerr < 1e-12
 
+# Test convergence with increasing quadrature points
 println("Convergence of u with random C (please test this visually!): ")
 println(" nquad |    err    |   err_g")
 println("-------|-----------|-----------")
