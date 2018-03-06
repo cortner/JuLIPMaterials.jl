@@ -2,7 +2,7 @@
 
 module CauchyBorn
 
-using JuLIP, StaticArrays
+using JuLIP, StaticArrays, Calculus
 
 import MaterialsScienceTools.CLE: elastic_moduli
 
@@ -14,74 +14,94 @@ using ..Vec3, ..Mat3
 # const MTen33{T} = MArray{Tuple{3,3,3},T,3,27}
 # const MTen43{T} = MArray{NTuple{4,3},T,4,81}
 
+abstract type Wcb end
 
 export Wcb
 
-"""
-`struct Wcb` : Cauchy--Born potential
 
+Wcb(at::AbstractAtoms) = Wcb(at, calculator(at))
+
+"""
 Construct using
 ```
 W = Wcb(at)
 W = Wcb(at, calc)
 ```
-This pre-computes several partial derivatives of W in the reference state.
-To prevent this precomputation, use the kw-argument `precompute=false`.
 
-Then `W` can be used to evaluate the following quantifies:
+## KW Arguments
 
-## For a Simple Lattice (unit cell contains 1 atom)
+* `precompute=true`: This (possibly) pre-computes several partial derivatives
+of W in the reference state. To prevent this precomputation use the kw-argument
+`precompute=false`.
+* `normalise = :volume`: this normalises W against the volume of the unit cell.
+Alternatively, to normalise against the number of atoms use `normalise = :atoms`.
+Or, simply pass in a scalar `normalise = v0`.
+
+
+## Usage
+
+`W` can be used to evaluate the following quantities:
+
+### For a Simple Lattice (unit cell contains 1 atom)
 
 * `W(F)` : with `F` a 3 x 3 matrix is the energy / undeformed volume;
 * `grad(W, F)` : with `F` a 3 x 3 matrix is the first Piola-Kirchhoff stress at
 `F`, i.e., the jacobian of `W(F)` w.r.t. `F`
 * `div_grad(W,F)` : finite-difference implementation of div ∂W(F)
 """
-mutable struct Wcb{N, TA, TC, T}
-   at::TA                # unit cell
-   C0::Mat3{T}           # original cell matrix (cell(at))
-   X0::Vector{Vec3{T}}   # original positions
-   calc::TC              # calculator
-   dpW::Vector{T}        # ------ quadratic expansion of W
-   dFW::Matrix{T}        #
-   dpdpW::Matrix{T}      #
-   dpdpW_inv::Matrix{T}  #
-   dpdFW::Array{T, 3}    #
-   dFdFW::Array{T, 4}    #
-   nat::Val{N}           # something to allow for efficient dispatch
-end
-
-
-Wcb(at::AbstractAtoms) = Wcb(at, calculator(at))
-
-function Wcb(at::AbstractAtoms, calc::AbstractCalculator; precompute=true)
-   @assert length(at) == 1
+function Wcb(at::AbstractAtoms, calc::AbstractCalculator;
+             normalise=:volume, kwargs...)
    const T = Float64
+   @assert length(at) == 1
    set_calculator!(at, calc)
-   if precompute && length(at) > 1
-      dpdpW = dpdpWcb(at)
-      dpdpW_inv = pinv(dpdpW)
+   # compute the normalisation factor; volume or what?
+   if normalise == :volume
+      v0 = det(cell(at))
+   elseif normalise == :atoms
+      v0 = T(length(at))
+   elseif normalise isa Number
+      v0 = T(normalise)
    else
-      dpdpW = Matrix{T}(0,0)
-      dpdpW_inv = Matrix{T}(0,0)
+      error("Wcb: unrecognised kwarg `normalise = $normalise`")
    end
-   return Wcb(at, Mat3(cell(at)), positions(at), calc,
-              Vector{T}(0), Matrix{T}(0,0),
-              dpdpW, dpdpW_inv, Array{T, 3}(0,0,0), Array{T, 4}(0,0,0,0),
-              Val(length(at)))
+   # simple lattice case
+   if length(at) == 1
+      return Wcb1(at, v0; kwargs...)
+   elseif length(at) == 2 && length(unique(chemical_symbols(at))) == 1
+      return Wcb2(at, v0; kwargs...)
+   else
+      error("""`Wcb`: so far, only single species 1-lattice and 2-lattice
+      have been implemented. If you need a more general case, please file
+      an issue at https://github.com/cortner/MaterialsScienceTools.jl""")
+   end
 end
+
+
+set_rel_defm!(W::Wcb, F) = set_defm!(W.at, F * W.C0')
+
 
 # ================ Simple Lattice Cauchy--Born  ==============
 
+"""
+`struct Wcb1` : Simple Lattice Cauchy--Born potential, see documentation
+for `Wcb`
+"""
+struct Wcb1{TA, T} <: Wcb
+   at::TA        # unit cell
+   C0::Mat3{T}   # original cell matrix (cell(at))
+   v0::T         # volume of original cell
+end
 
-(W::Wcb)(args...) = evaluate(W::Wcb, args...)
+Wcb1(at::AbstractAtoms, v0) = Wcb1(at, Mat3(cell(at)), v0)
 
-evaluate(W::Wcb{1}, F) = energy( set_defm!(W.at, F * W.C0') ) / det(W.C0)
+(W::Wcb1)(args...) = evaluate(W, args...)
 
-grad(W::Wcb{1}, F) = (- virial( set_defm!(W.at, F * W.C0') ) * inv(F)') / det(W.C0)
+evaluate(W::Wcb1, F) = energy( set_rel_defm!(W, F) ) / W.v0
+
+grad(W::Wcb1, F) = (- virial( set_rel_defm!(W, F) ) * inv(F)') / W.v0
 
 
-function div_grad(W::Wcb{1}, F, x::Vec3{T}) where T
+function div_grad(W::Wcb1, F, x::Vec3{T}) where T
    h = 1e-5
    E = @SMatrix eye(3)
    return sum( (grad(W, F(x+h*E[:,i]))[:,i] - grad(W, F(x-h*E[:,i]))[:,i]) / (2*h)
@@ -89,44 +109,51 @@ function div_grad(W::Wcb{1}, F, x::Vec3{T}) where T
 end
 
 
-# ============= Single Species 2-Lattice =================
-#
-# This is a special case that
 
-#
-# # function evaluate_newton(W::Wcb, F)
-# # end
-#
-#
-# function DpWcb(F, p, at, calc)
-#     @assert length(at) == 2
-#     set_defm!(at, F)
-#     X = positions(at)
-#     X[2] = X[1] + p
-#     set_positions!(at, X)
-#     return -forces(calc, at)[2]
-# end
-#
-#
-# function dpdpWcb(at)
-#     calc = calculator(at)
-#     F0 = defm(at)
-#     p0 = positions(at)[2] |> Vector
-#     h = 1e-5
-#     dpdpW = zeros(3, 3)
-#     for i = 1:3
-#         p0[i] += h
-#         DpW1 = DpWcb(F0, JVecF(p0), at, calc)
-#         p0[i] -= 2*h
-#         DpW2 = DpWcb(F0, JVecF(p0), at, calc)
-#         p0[i] += h
-#         dpdpW[:, i] = (DpW1 - DpW2) / (2*h)
-#     end
-#     return 0.5 * (dpdpW + dpdpW')
-# end
-#
-#
-#
+
+# ============= Single Species 2-Lattice =================
+
+"""
+`struct Wcb2` : single-species 2-lattice Lattice Cauchy--Born potential,
+see documentation for `Wcb`
+"""
+struct Wcb2{T, TA}
+   at::TA        # unit cell
+   C0::Mat3{T}   # original cell matrix (cell(at))
+   v0::T         # volume of original cell
+   p0::Vec3{T}
+   p1::Vec3{T}
+   dpdpW::Mat3{T}
+   dpdpW_inv::Mat3{T}
+end
+
+function Wcb2(at::AbstractAtoms; precompute = true)
+   @assert length(at) == 2 && length(unique(chemical_symbols(at))) == 1
+   if precompute
+      dpdpW = dpdpWcb2(at)
+      dpdpW_inv = inv(dpdpW)
+   else
+      dpdpW = zero(Mat3{T})
+      dpdpW_inv = zero(Mat3{T})
+   end
+   X = positions(at)
+   return Wcb2(at, Mat3(cell(at)), det(cell(at)), X[1], X[2], dpdpW, dpdpW_inv)
+end
+
+set_F_and_p!(W::Wcb2, F, p) = set_positions!(set_rel_defm!(W, F), [W.p0, W.p0+p])
+
+evaluate(W::Wcb2, F, p) = energy( set_F_and_p!(W, F, p) )
+
+grad_p(W::Wcb2, F, p) = - forces( set_F_and_p!(W, F, p) )[2]
+
+# grad_F(W::Wcb2, F, p) = 0  # TODO
+
+function dpdpWcb(W::Wcb2{T}) where T
+   J = Calculus.jacobian(p -> grad_p(W, eye(3), p))
+   dpdpW = J(W.p1)
+   return Mat3{T}(0.5 * (dpdpW + dpdpW'))
+end
+
 # # TODO: replace with get_shift
 # function (W::WcbQuad)(F)
 #     # TODO this is fishy - why is the initial position not reset?

@@ -1,30 +1,27 @@
 
 module FCC
 
-using JuLIP, JuLIP.ASE
+using JuLIP
 
 using MaterialsScienceTools.CLE: u_edge_isotropic, u_edge_fcc_110,
       voigt_moduli
-
-# This will clean it up I think:
-# import JuLIP.ASE: bulk
 
 
 
 const Afcc = JMatF([ 0.0 1 1; 1 0 1; 1 1 0])
 
 """
-ensure that species S actually crystallises to FCC
+ensure that species `sym` actually crystallises to FCC
 """
-function check_fcc(S::AbstractString)
-   F = defm(bulk(S))
+function check_fcc(sym::Symbol)
+   F = defm(bulk(sym))
    @assert vecnorm(F/F[1,2] - Afcc) < 1e-12
 end
 
 
 
 """
-`fcc_110_plane(s::AbstractString) -> at, b, xcore, a`
+`fcc_110_plane(sym::Symbol) -> at, b, xcore, a`
 
 Generates an orthorhombic unit cell for an FCC crystal chosen
 such that the e1 direction is the burgers vector and the e3 direction the normal
@@ -40,7 +37,7 @@ a1, a2, a3 directions. This cell contains two atoms.
 * `xcore` : a core-offset (to add to any lattice position)
 * `a` : lattice parameter
 """
-function fcc_110_plane(s::AbstractString)
+function fcc_110_plane(sym::Symbol)
    # ensure s is actually an FCC species
    check_fcc(s)
    # get the cubic unit cell dimension
@@ -104,7 +101,7 @@ generates a linear elasticity predictor configuration for
 an edge dislocation in FCC, with burgers vector ∝ e₁  and dislocation
 core direction ν ∝ e₃
 
-* `s` : species (string)
+* `s` : chemical symbol
 * `R` : domain radius in lattice spacings
 
 **Keyword Arguments:**
@@ -117,13 +114,13 @@ core direction ν ∝ e₃
 * `zDir=1` : how many layers in z-direction?
 * `eos_correction = false` : apply the slip-correction from Ehrlacher, Ortner, Shapeev (Arch. Ration. Mech. Anal. 2016)
 """
-function fcc_edge_geom(species::AbstractString, R::Real;
+function fcc_edge_geom(sym::Symbol, R::Real;
                        truncate=true, cle=:anisotropic, ν=0.25,
                        calc=nothing,
                        TOL=1e-4, zDir=1,
                        eos_correction = true)
    # compute the correct unit cell
-   atu, b, xcore, a = fcc_110_plane(species)
+   atu, b, xcore, a = fcc_110_plane(sym)
    # multiply the cell to fit a ball of radius a/√2 * R inside
    L1 = ceil(Int, 2*R) + 3
    L2 = ceil(Int, 2*R/√2) + 3
@@ -160,7 +157,7 @@ function fcc_edge_geom(species::AbstractString, R::Real;
       # TODO: this doesn't look clean; maybe we need to pass atu in the future
       # I'm not fully understanding how the function fcc_edge_plane(s) works
       set_pbc!(atu, true)
-      atv = bulk(species, cubic=true) * 4
+      atv = bulk(sym, cubic=true) * 4
       Cv = voigt_moduli(calc, atv)
       ux, uy = u_edge_fcc_110(xmod, ymod, b, Cv, a, TOL=TOL)
    else
@@ -175,7 +172,7 @@ function fcc_edge_geom(species::AbstractString, R::Real;
       X = vecs(X)  # find points within radius
       IR = find( [vecnorm(x[1:2] - xcore) for x in X] .<= R * a/√2 )
       X = X[IR]
-      at = ASEAtoms("$(species)$(length(X))")  # generate a new atoms object
+      at = Atoms(sym, X)  # generate a new atoms object
       set_defm!(at, F)                 # and insert the old cell shape
    end
    # update positions in Atoms object, set correct BCs and return

@@ -52,7 +52,7 @@ function elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms)
 end
 
 """
-`voig_moduli`: compute elastic moduli in the format of Voigt moduli.
+`voigt_moduli`: compute elastic moduli in the format of Voigt moduli.
 
 Methods:
 * `voigt_moduli(at)`
