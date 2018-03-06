@@ -14,7 +14,7 @@ using ..Vec3, ..Mat3
 # const MTen33{T} = MArray{Tuple{3,3,3},T,3,27}
 # const MTen43{T} = MArray{NTuple{4,3},T,4,81}
 
-abstract type Wcb
+abstract type Wcb end
 
 export Wcb
 
@@ -27,27 +27,48 @@ Construct using
 W = Wcb(at)
 W = Wcb(at, calc)
 ```
-This pre-computes several partial derivatives of W in the reference state.
-To prevent this precomputation, use the kw-argument `precompute=false`.
 
-Then `W` can be used to evaluate the following quantifies:
+## KW Arguments
 
-## For a Simple Lattice (unit cell contains 1 atom)
+* `precompute=true`: This (possibly) pre-computes several partial derivatives
+of W in the reference state. To prevent this precomputation use the kw-argument
+`precompute=false`.
+* `normalise = :volume`: this normalises W against the volume of the unit cell.
+Alternatively, to normalise against the number of atoms use `normalise = :atoms`.
+Or, simply pass in a scalar `normalise = v0`.
+
+
+## Usage
+
+`W` can be used to evaluate the following quantities:
+
+### For a Simple Lattice (unit cell contains 1 atom)
 
 * `W(F)` : with `F` a 3 x 3 matrix is the energy / undeformed volume;
 * `grad(W, F)` : with `F` a 3 x 3 matrix is the first Piola-Kirchhoff stress at
 `F`, i.e., the jacobian of `W(F)` w.r.t. `F`
 * `div_grad(W,F)` : finite-difference implementation of div ∂W(F)
 """
-function Wcb(at::AbstractAtoms, calc::AbstractCalculator; kwargs...)
+function Wcb(at::AbstractAtoms, calc::AbstractCalculator;
+             normalise=:volume, kwargs...)
    const T = Float64
    @assert length(at) == 1
    set_calculator!(at, calc)
+   # compute the normalisation factor; volume or what?
+   if normalise == :volume
+      v0 = det(cell(at))
+   elseif normalise == :atoms
+      v0 = T(length(at))
+   elseif normalise isa Number
+      v0 = T(normalise)
+   else
+      error("Wcb: unrecognised kwarg `normalise = $normalise`")
+   end
    # simple lattice case
    if length(at) == 1
-      return Wcb1(at; kwargs...)
+      return Wcb1(at, v0; kwargs...)
    elseif length(at) == 2 && length(unique(chemical_symbols(at))) == 1
-      return Wcb2(at; kwargs...)
+      return Wcb2(at, v0; kwargs...)
    else
       error("""`Wcb`: so far, only single species 1-lattice and 2-lattice
       have been implemented. If you need a more general case, please file
@@ -55,7 +76,6 @@ function Wcb(at::AbstractAtoms, calc::AbstractCalculator; kwargs...)
    end
 end
 
-(W::Wcb)(args...) = evaluate(W::Wcb, args...)
 
 set_rel_defm!(W::Wcb, F) = set_defm!(W.at, F * W.C0')
 
@@ -72,11 +92,13 @@ struct Wcb1{TA, T} <: Wcb
    v0::T         # volume of original cell
 end
 
-Wcb1(at::AbstractAtoms) = Wcb1(at, Mat3(cell(at)), det(cell(at)))
+Wcb1(at::AbstractAtoms, v0) = Wcb1(at, Mat3(cell(at)), v0)
 
-evaluate(W::Wcb1, F) = energy( set_rel_defm!(W, F) ) / det(W.C0)
+(W::Wcb1)(args...) = evaluate(W, args...)
 
-grad(W::Wcb1, F) = (- virial( set_rel_defm!(W, F) ) * inv(F)') / det(W.C0)
+evaluate(W::Wcb1, F) = energy( set_rel_defm!(W, F) ) / W.v0
+
+grad(W::Wcb1, F) = (- virial( set_rel_defm!(W, F) ) * inv(F)') / W.v0
 
 
 function div_grad(W::Wcb1, F, x::Vec3{T}) where T
@@ -85,6 +107,7 @@ function div_grad(W::Wcb1, F, x::Vec3{T}) where T
    return sum( (grad(W, F(x+h*E[:,i]))[:,i] - grad(W, F(x-h*E[:,i]))[:,i]) / (2*h)
                for i = 1:3 )
 end
+
 
 
 

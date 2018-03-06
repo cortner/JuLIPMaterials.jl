@@ -2,15 +2,15 @@
 module BCC
 
 using ..CLE
-using JuLIP, JuLIP.ASE
+using JuLIP
 using ..Vec3, ..Mat3, ..Ten43, ..cluster
 
-function lattice_constants_111(s::AbstractString; calc = nothing)
+function lattice_constants_111(sym::Symbol; calc = nothing)
    # See cell_111 for description of outputs
    if calc == nothing
       a0 = rnn(s)
    else
-      at0 = bulk(s, cubic=true, pbc=true)
+      at0 = bulk(sym, cubic=true, pbc=true)
       set_constraint!(at0, VariableCell(at0))
       set_calculator!(at0, calc)
       minimise!(at0, verbose=0)
@@ -21,40 +21,39 @@ function lattice_constants_111(s::AbstractString; calc = nothing)
    return a0, b0, c0
 end
 
-function cell_111(s::AbstractString; calc=nothing)
+function cell_111(sym::Symbol; calc=nothing)
    # a0 is z-direction cell height
    # b0 is x-spacing between atoms in cell
    # c0 is y-spacing between atoms in cell
    # Full cell is size = 3b0 × 2c0 × a0
-   a0, b0, c0 = lattice_constants_111(s, calc=calc)
+   a0, b0, c0 = lattice_constants_111(sym, calc=calc)
    X = [ [0.0, 0.0, 0.0] [b0, 0.0, a0/3] [2*b0, 0.0, 2*a0/3] [b0/2, c0, 2*a0/3] [3*b0/2, c0, 0.0] [5*b0/2, c0, a0/3] ] |> vecs
    F = diagm([3*b0, 2*c0, a0])
-   at = ASEAtoms("$s$(length(X))")
-   set_positions!(at, X)
+   at = Atoms(sym, X)
    set_defm!(at, F)
    set_pbc!(at, true)
    return at
 end
 
 """
-`screw_111(s::AbstractString, R::Float64; x0=:center, layers=1)`
+`screw_111(sym::Symbol, R::Float64; x0=:center, layers=1)`
 
 Construct a circular cluster with a screw dislocation in the centre.
-* `s`: species
+* `sym`: chemical symbol
 * `R`: radius of cluster
 * `x0`: position of screw dislocation core, relative to a lattice site
 """
-function screw_111(s::AbstractString, R::Float64;
+function screw_111(sym::Symbol, R::Float64;
             x0 = :center, layers=1, soln = :anisotropic, calc = nothing,
             bsign = 1)::AbstractAtoms
-   a0, b0, c0 = lattice_constants_111(s; calc=calc)
+   a0, b0, c0 = lattice_constants_111(sym; calc=calc)
    x00 = JVecF( ([b0, 0, a0/3] + [b0/2, c0, 2*a0/3]) / 3 )
    if (x0 == :center) || (x0 == :centre)
       # center of mass of a triangle. (the z coordinate is irrelevant!)
       x0 = x00
    end
    # create a cluster
-   at = cluster(cell_111(s, calc=calc), R, dims=(1,2))
+   at = cluster(cell_111(sym, calc=calc), R, dims=(1,2))
    at = at * (1,1,layers)
    # get positions  to manipulate them
    X = positions(at) |> mat
@@ -74,7 +73,7 @@ function screw_111(s::AbstractString, R::Float64;
       X = vecs(X)
       X .+= disl.(X0)
    elseif soln == :anisotropic
-      atu = cell_111(s)
+      atu = cell_111(sym)
       set_pbc!(atu, true)
       set_calculator!(atu, calc)
       t = Vec3([0.0, 0.0, 1.0])

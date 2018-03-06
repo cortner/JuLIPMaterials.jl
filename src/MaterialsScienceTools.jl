@@ -10,10 +10,9 @@ include("FCC.jl")
 
 include("BCC.jl")
 
-include("Si.jl")
+# include("Si.jl")
 
 include("Testing.jl")
-
 
 # include("TriangularLattice.jl")
 
