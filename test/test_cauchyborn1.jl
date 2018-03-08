@@ -1,7 +1,7 @@
 
 using Base.Test
+using JuLIP, ForwardDiff
 using MaterialsScienceTools
-using JuLIP, JuLIP.Potentials, ForwardDiff
 
 MST = MaterialsScienceTools
 CB = MST.CauchyBorn
@@ -12,8 +12,8 @@ println("------------------------------------------------------------")
 println(" Testing Simple Lattice Cauchy--Born Implementation")
 println("------------------------------------------------------------")
 
-at = bulk("Fe")
-r0 = rnn("Fe")
+at = bulk(:Fe)
+r0 = rnn(:Fe)
 calc = LennardJones(σ = r0) * C2Shift(2.7*r0)
 set_calculator!(at, calc)
 set_constraint!(at, VariableCell(at))
@@ -52,56 +52,27 @@ else
    also possible that the function being tested is poorly scaled.)""")
 end
 
-# ------ The big test: 2nd-order consistency with atomistic model -------
-
-
-using Base.Test
-using MaterialsScienceTools
-using JuLIP, JuLIP.Potentials, ForwardDiff
-
-MST = MaterialsScienceTools
-CB = MST.CauchyBorn
-CLE = MST.CLE
-FD = ForwardDiff
+# ------ some more random tests left-over from debugging -------
 
 # setup a Cauchy-Born model for bulk Fe
-atu = bulk("Fe")
-r0 = rnn("Fe")
+atu = bulk(:Fe)
+r0 = rnn(:Fe)
 calc = LennardJones(σ = r0) * C2Shift(2.7*r0)
 set_calculator!(atu, calc)
 set_constraint!(atu, VariableCell(atu))
-minimise!(atu)
 println("Constructing Wcb . . .")
 W = CB.Wcb(atu, calc, normalise = :atoms)
 
 energy(atu)
+W(eye(3))
 
-virial(atu)  |> norm
-CB.grad(W, eye(3))
+@test CB.grad(W, eye(3)) ≈ -virial(atu)
+@test stress(atu) == CB.grad(W, eye(3)) / det(cell(atu))
 
-# a nice, smooth displacement
-R = 30.1
-p = -1
-y = x -> x + (2 + sum(x.^2))^((p-1)/2) * x
-∇y = x -> FD.jacobian(y, x)
-
-at = MST.cluster("Fe", R)
-set_pbc!(at, true)
-set_calculator!(at, calc)
-X0 = positions(at)
-set_positions!(at, y.(X0))
-
-r = 1 + norm.(X0)
-Fat = forces(at)
-
-Fcb = [ CB.div_grad(W, ∇y, x)  for x in X0 ]
-
-
-
-using Plots
-Plots.gr()
-P = plot(r, 1e-15+norm.(Fat), lw=0, m=:o, ms=2, label = "|f_at|",
-         xaxis = (:log, [1.0, 1.2*R]), yaxis = (:log, [1e-3, 1e2]) )
-plot!(P, r, norm.(Fcb), lw = 0, m=:o, ms=2, label="|f_cb|")
-plot!(P, r, 5_000*r.^(p-2), label = "r^{p-2}")
-display(P)
+at1 = deepcopy(atu)
+F0 = defm(at1)
+for n = 1:5
+   F = eye(3) + 0.1 * rand(3,3)
+   set_defm!(at1, F * F0)
+   @test energy(calc, at1) == W(F)
+end
