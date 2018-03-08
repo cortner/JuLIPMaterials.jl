@@ -86,29 +86,27 @@ set_rel_defm!(W::Wcb, F) = set_defm!(W.at, F * W.C0')
 `struct Wcb1` : Simple Lattice Cauchy--Born potential, see documentation
 for `Wcb`
 """
-struct Wcb1{TA, T} <: Wcb
+struct Wcb1{TA, TC, T} <: Wcb
+   calc::TC
    at::TA        # unit cell
    C0::Mat3{T}   # original cell matrix (cell(at))
    v0::T         # volume of original cell
 end
 
-Wcb1(at::AbstractAtoms, v0) = Wcb1(at, Mat3(cell(at)), v0)
+Wcb1(at::AbstractAtoms, v0) = Wcb1(calculator(at), at, Mat3(cell(at)), v0)
 
 (W::Wcb1)(args...) = evaluate(W, args...)
 
-evaluate(W::Wcb1, F) = energy( set_rel_defm!(W, F) ) / W.v0
+evaluate(W::Wcb1, F) = energy( W.calc, set_rel_defm!(W, F) ) / W.v0
 
-grad(W::Wcb1, F) = (- virial( set_rel_defm!(W, F) ) * inv(F)') / W.v0
+grad(W::Wcb1, F) = (- virial( W.calc, set_rel_defm!(W, F) ) * inv(F)') / W.v0
 
+const _EE = @SMatrix eye(3)
+ee(i::Integer) = _EE[:,i]
 
-function div_grad(W::Wcb1, F, x::Vec3{T}) where T
-   h = 1e-5
-   E = @SMatrix eye(3)
-   return sum( (grad(W, F(x+h*E[:,i]))[:,i] - grad(W, F(x-h*E[:,i]))[:,i]) / (2*h)
-               for i = 1:3 )
-end
-
-
+div_grad(W::Wcb1, F, x::Vec3{T}; h = 1e-5) where T =
+      sum( (grad(W, F(x+h*ee(i)))[:,i] - grad(W, F(x-h*ee(i)))[:,i]) / (2*h)
+            for i = 1:3 )
 
 
 # ============= Single Species 2-Lattice =================
