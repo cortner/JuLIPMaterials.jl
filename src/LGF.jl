@@ -58,9 +58,10 @@ force_constants{T}(calc::PairPotential, at::Atoms{T}) =
 * `R` : non-zero lattice vectors, in interaction range
 * `H` : hessian blocks
 """
-struct LGF1{T <: AbstractFloat}
+struct LGF1{T <: AbstractFloat, TI}
    DM::DynamicalMatrix1{T}
    Gc::GreenFunction3D{T}
+   at::Atoms{T, TI}      # only used to compute geometry information 
 end
 
 length(G::LGF1) = length(G.R)
@@ -78,7 +79,8 @@ function LGF(calc::AbstractCalculator, at::Atoms; Nquad = 10, kwargs...)
       error("`LGF` : only the Bravais lattice case is currently implements")
    end
    return LGF1( DynamicalMatrix1(calc, at),
-                GreenFunction(calc, at; Nquad = 10, kwargs...) )
+                GreenFunction(calc, at; Nquad = 10, kwargs...),
+                deepcopy(at) )
 end
 
 
