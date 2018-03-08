@@ -101,9 +101,6 @@ evaluate(W::Wcb1, F) = energy( W.calc, set_rel_defm!(W, F) ) / W.v0
 
 grad(W::Wcb1, F) = (- virial( W.calc, set_rel_defm!(W, F) ) * inv(F)') / W.v0
 
-const _EE = @SMatrix eye(3)
-ee(i::Integer) = _EE[:,i]
-
 div_grad(W::Wcb1, F, x::Vec3{T}; h = 1e-5) where T =
       sum( (grad(W, F(x+h*ee(i)))[:,i] - grad(W, F(x-h*ee(i)))[:,i]) / (2*h)
             for i = 1:3 )

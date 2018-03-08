@@ -1,5 +1,6 @@
 
 
+
 using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43
 
 using Einsum, StaticArrays
@@ -46,7 +47,16 @@ function GreenFunction(C::Ten43; Nquad = nothing, remove_singularity = true)
    return GreenFunction3D(Nquad, C, remove_singularity)
 end
 
+
 GreenFunction{T}(C::Array{T, 4}; kwargs...) = GreenFunction(Ten43{T}(C); kwargs...)
+
+
+GreenFunction(at::AbstractAtoms; kwargs...) =
+      GreenFunction(calculator(at), at; kwargs...)
+
+GreenFunction(calc::AbstractCalculator, at::AbstractAtoms; kwargs...) =
+      GreenFunction(elastic_moduli(calc, at); kwargs...)
+
 
 function (G::GreenFunction3D{T})(x) where T
    if G.remove_singularity && norm(x) < 1e-10
