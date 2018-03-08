@@ -5,7 +5,7 @@ module Elasticity_110
 using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
          stress, defm, set_defm!
 
-using MaterialsScienceTools.CLE: elastic_moduli, voigt_moduli
+using JuLIPMaterials.CLE: elastic_moduli, voigt_moduli
 
 const Tensor{T} = Array{T,4}
 

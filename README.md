@@ -1,4 +1,4 @@
-# MaterialsScienceTools.jl
+# JuLIPMaterials.jl
 
 For now this is a random collection of tools for computational materials
 science, such as computing elastic moduli or generating elastic fields for
@@ -27,9 +27,9 @@ dislocations.
 * higher-order corrections
 
 
-<!-- [![Build Status](https://travis-ci.org/cortner/MaterialsScienceTools.jl.svg?branch=master)](https://travis-ci.org/cortner/MaterialsScienceTools.jl)
+<!-- [![Build Status](https://travis-ci.org/cortner/JuLIPMaterials.jl.svg?branch=master)](https://travis-ci.org/cortner/JuLIPMaterials.jl)
 
-[![Coverage Status](https://coveralls.io/repos/cortner/MaterialsScienceTools.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/cortner/MaterialsScienceTools.jl?branch=master)
+[![Coverage Status](https://coveralls.io/repos/cortner/JuLIPMaterials.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/cortner/JuLIPMaterials.jl?branch=master)
 
-[![codecov.io](http://codecov.io/github/cortner/MaterialsScienceTools.jl/coverage.svg?branch=master)](http://codecov.io/github/cortner/MaterialsScienceTools.jl?branch=master)
+[![codecov.io](http://codecov.io/github/cortner/JuLIPMaterials.jl/coverage.svg?branch=master)](http://codecov.io/github/cortner/JuLIPMaterials.jl?branch=master)
 -->

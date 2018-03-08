@@ -3,7 +3,7 @@ using JuLIP
 using JuLIP.ASE
 using JuLIP.Potentials
 
-using MaterialsScienceTools.Elasticity: elastic_moduli
+using JuLIPMaterials.Elasticity: elastic_moduli
 
 println("=========================")
 println(" Testing Elasticity      ")

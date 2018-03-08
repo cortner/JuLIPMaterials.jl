@@ -1,9 +1,9 @@
 
 
 using JuLIP, JuLIP.Potentials
-import MaterialsScienceTools
+import JuLIPMaterials
 
-MST = MaterialsScienceTools
+MST = JuLIPMaterials
 CLE = MST.CLE
 
 using CLE: grad

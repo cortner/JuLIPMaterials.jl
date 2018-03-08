@@ -6,7 +6,7 @@ using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
 
 using StaticArrays
 
-using MaterialsScienceTools: Vec3, Mat3, Ten33, Ten43,
+using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43,
          MVec3, MMat3, MTen33, MTen43
 
 # TODO: get rid of this?

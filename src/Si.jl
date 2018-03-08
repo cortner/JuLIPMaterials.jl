@@ -7,15 +7,15 @@ module Si
 
 using JuLIP, JuLIP.ASE, JuLIP.Potentials, QuadGK, ForwardDiff
 
-import MaterialsScienceTools
+import JuLIPMaterials
 
-using MaterialsScienceTools.CLE: elastic_moduli, voigt_moduli,
+using JuLIPMaterials.CLE: elastic_moduli, voigt_moduli,
          fourth_order_basis, sextic_roots, A_coefficients, D_coefficients,
          little_a
 
-CLE = MaterialsScienceTools.CLE
-FCC = MaterialsScienceTools.FCC
-CauchyBorn = MaterialsScienceTools.CauchyBorn
+CLE = JuLIPMaterials.CLE
+FCC = JuLIPMaterials.FCC
+CauchyBorn = JuLIPMaterials.CauchyBorn
 
 
 """

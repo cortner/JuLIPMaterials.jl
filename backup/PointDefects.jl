@@ -2,7 +2,7 @@ module PointDefects
 
    using JuLIP: deleteat!, JVecF, AbstractAtoms
    using JuLIP.ASE: rnn, extend!
-   import MaterialsScienceTools: cluster
+   import JuLIPMaterials: cluster
 
 
    export PointDefect, Vacancy, SelfInterstitial

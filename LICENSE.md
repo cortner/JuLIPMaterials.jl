@@ -1,4 +1,4 @@
-The MaterialsScienceTools.jl package is licensed under the MIT "Expat" License:
+The JuLIPMaterials.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2016: Christoph Ortner.
 > 

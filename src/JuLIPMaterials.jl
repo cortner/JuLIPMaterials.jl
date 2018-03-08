@@ -1,4 +1,4 @@
-module MaterialsScienceTools
+module JuLIPMaterials
 
 include("common.jl")
 

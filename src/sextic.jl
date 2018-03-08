@@ -1,7 +1,7 @@
 
 
 include("Elasticity_110.jl")
-using MaterialsScienceTools.CLE.Elasticity_110:
+using JuLIPMaterials.CLE.Elasticity_110:
       elastic_moduli,
       voigt_moduli,
       fourth_order_basis,

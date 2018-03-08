@@ -2,7 +2,7 @@
 # TODO: this is not at all tested yet!!!!!!!
 
 # we need this to evaluate the annoying integrand in the displacement field
-using MaterialsScienceTools: Vec3, Mat3, Ten33, Ten43
+using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43
 using Einsum, StaticArrays
 using GaussQuadrature: legendre
 

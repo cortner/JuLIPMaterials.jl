@@ -1,4 +1,4 @@
-using MaterialsScienceTools
+using JuLIPMaterials
 using Base.Test
 
 tests = [
@@ -9,9 +9,9 @@ tests = [
 ]
 
 println("≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡")
-println("   MaterialsScienceTools: Start Tests   ")
+println("   JuLIPMaterials: Start Tests   ")
 println("≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡")
-@testset "MaterialsScienceTools" begin
+@testset "JuLIPMaterials" begin
    for t in tests
       @testset "$(t[6:end-3])" begin
          include(t)

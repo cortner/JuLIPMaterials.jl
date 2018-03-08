@@ -4,7 +4,7 @@ module CauchyBorn
 
 using JuLIP, StaticArrays, Calculus
 
-import MaterialsScienceTools.CLE: elastic_moduli
+import JuLIPMaterials.CLE: elastic_moduli
 
 using ..Vec3, ..Mat3
 # const Ten33{T} = SArray{Tuple{3,3,3},T,3,27}
@@ -72,7 +72,7 @@ function Wcb(at::AbstractAtoms, calc::AbstractCalculator;
    else
       error("""`Wcb`: so far, only single species 1-lattice and 2-lattice
       have been implemented. If you need a more general case, please file
-      an issue at https://github.com/cortner/MaterialsScienceTools.jl""")
+      an issue at https://github.com/cortner/JuLIPMaterials.jl""")
    end
 end
 

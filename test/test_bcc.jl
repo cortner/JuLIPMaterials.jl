@@ -1,8 +1,8 @@
-using MaterialsScienceTools
+using JuLIPMaterials
 using Base.Test
 using JuLIP, JuLIP.Potentials
 using PyPlot
-MST = MaterialsScienceTools
+MST = JuLIPMaterials
 BCC = MST.BCC
 
 # data = Pkg.dir("JuLIP") * "/data/"

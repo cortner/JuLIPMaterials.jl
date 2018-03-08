@@ -1,6 +1,6 @@
 
 
-using MaterialsScienceTools: Vec3, Mat3, Ten33, Ten43
+using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43
 
 using Einsum, StaticArrays
 

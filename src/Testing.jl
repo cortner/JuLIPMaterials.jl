@@ -3,11 +3,11 @@ module Testing
 
 using ForwardDiff
 
-import MaterialsScienceTools
-using MaterialsScienceTools: Vec3, Mat3, Ten33, Ten43,
+import JuLIPMaterials
+using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43,
                              MVec3, MMat3, MTen33, MTen43
 
-CLE = MaterialsScienceTools.CLE
+CLE = JuLIPMaterials.CLE
 
 export randvec3, randmoduli, cleforce
 

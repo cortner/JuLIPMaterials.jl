@@ -3,7 +3,7 @@ module FCC
 
 using JuLIP
 
-using MaterialsScienceTools.CLE: u_edge_isotropic, u_edge_fcc_110,
+using JuLIPMaterials.CLE: u_edge_isotropic, u_edge_fcc_110,
       voigt_moduli
 
 

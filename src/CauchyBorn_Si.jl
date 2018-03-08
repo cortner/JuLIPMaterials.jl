@@ -5,7 +5,7 @@ module CauchyBorn
 using JuLIP
 using JuLIP.Potentials: StillingerWeber
 
-import MaterialsScienceTools.CLE: elastic_moduli
+import JuLIPMaterials.CLE: elastic_moduli
 
 export WcbQuad
 

@@ -1,9 +1,9 @@
 
 using Base.Test
 using JuLIP, ForwardDiff
-using MaterialsScienceTools
+using JuLIPMaterials
 
-MST = MaterialsScienceTools
+MST = JuLIPMaterials
 CB = MST.CauchyBorn
 CLE = MST.CLE
 FD = ForwardDiff
