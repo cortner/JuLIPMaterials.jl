@@ -6,13 +6,7 @@ using JuLIP, StaticArrays, Calculus
 
 import JuLIPMaterials.CLE: elastic_moduli
 
-using ..Vec3, ..Mat3
-# const Ten33{T} = SArray{Tuple{3,3,3},T,3,27}
-# const Ten43{T} = SArray{NTuple{4,3},T,4,81}
-# const MVec3{T} = MVector{3, T}
-# const MMat3{T} = MMatrix{3,3,T}
-# const MTen33{T} = MArray{Tuple{3,3,3},T,3,27}
-# const MTen43{T} = MArray{NTuple{4,3},T,4,81}
+using JuLIPMaterials: ee, Vec3, Mat3
 
 abstract type Wcb end
 
@@ -100,9 +94,6 @@ Wcb1(at::AbstractAtoms, v0) = Wcb1(calculator(at), at, Mat3(cell(at)), v0)
 evaluate(W::Wcb1, F) = energy( W.calc, set_rel_defm!(W, F) ) / W.v0
 
 grad(W::Wcb1, F) = (- virial( W.calc, set_rel_defm!(W, F) ) * inv(F)') / W.v0
-
-const _EE = @SMatrix eye(3)
-ee(i::Integer) = _EE[:,i]
 
 div_grad(W::Wcb1, F, x::Vec3{T}; h = 1e-5) where T =
       sum( (grad(W, F(x+h*ee(i)))[:,i] - grad(W, F(x-h*ee(i)))[:,i]) / (2*h)
