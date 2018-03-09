@@ -4,3 +4,4 @@ QuadGK
 Einsum
 GaussQuadrature
 StaticArrays
+NearestNeighbors
