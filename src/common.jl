@@ -4,8 +4,8 @@ using JuLIP, StaticArrays
 export dists, cluster, strains
 
 
-const Vec3{T} = SVector{3, T}
-const Mat3{T} = SMatrix{3,3,T}
+const Vec3{T} = SArray{Tuple{3},T,1,3}
+const Mat3{T} = SArray{Tuple{3,3},T,2,9}
 const Ten33{T} = SArray{Tuple{3,3,3},T,3,27}
 const Ten43{T} = SArray{NTuple{4,3},T,4,81}
 const MVec3{T} = MVector{3, T}

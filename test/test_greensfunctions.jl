@@ -72,7 +72,7 @@ for (G, id, C) in [
       maxerr = max( vecnorm(cleforce(x, u, C), Inf), maxerr )
    end
    println("maxerr = $maxerr")
-   @test maxerr < 1e-12
+   @test maxerr < 1e-10
 end
 
 for (G, id, C) in [
