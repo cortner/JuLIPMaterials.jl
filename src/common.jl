@@ -3,7 +3,7 @@ using JuLIP, StaticArrays, NearestNeighbors
 
 import Base.findin
 
-export dists, cluster, strains
+export strains
 
 
 const Vec3{T} = SArray{Tuple{3},T,1,3}
@@ -76,7 +76,7 @@ returns `Ism, Ilge`, both `Vector{Int}` such that
 * Xsm[i] == Xlge[Ism[i]]
 * Xlge[i] == Xsm[Ilge[i]]  if Xlge[i] ∈ Xsm; otherwise Ilge[i] == 0
 """
-function findin(Xsm::AbstractVector{SVec{T}}, Xlge::AbstractVector{SVec{T}}) where T <: AbstractFloat
+function findin2(Xsm::Vector{SVec{T}}, Xlge::Vector{SVec{T}}) where T <: AbstractFloat
    # find the nearest neighbours of Xsm points in Xlge
    tree = KDTree(Xlge)
    # construct the Xsm -> Xlge mapping
