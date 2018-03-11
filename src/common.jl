@@ -1,6 +1,8 @@
 
 using JuLIP, StaticArrays, NearestNeighbors
 
+import Base.findin
+
 export dists, cluster, strains
 
 
@@ -24,7 +26,7 @@ returns maximum strains :  `maximum( du/dr over all neighbours )` at each atom
 """
 strains(U, at; rcut = cutoff(calculator(at))) =
    [ maximum(norm(u - U[i]) / s for (u, s) in zip(U[j], r))
-                           for (i, j, r, _1, _2) in sites(at, rcut) ]
+                           for (i, j, r, _1) in sites(at, rcut) ]
 
 
 
