@@ -5,23 +5,6 @@ sym = :Cu
 r0 = rnn(sym)
 V = lennardjones(r0 = r0)
 
-# for R in [3, 4, 6, 9] * r0 + 2 * cutoff(V)   # , 9, 13
-#    athom = cluster(sym, R)              # homogeneous reference configuration
-#    at = deleteat!(deepcopy(athom), 1)   # create a vacancy
-#    set_calculator!(at, V)
-#    C0, C1 = JuLIPMaterials.PoleExpansion.dipole_tensor(at, athom)
-#    println("R = $R, C0 = $C0")
-#    println("   C1 = $(round(C1,2))")
-# end
-#
-#
-#
-# for R in [3, 4, 6, 9]  # * r0 + 2 * cutoff(V)   # , 9, 13
-#    C0, C1 = JuLIPMaterials.PoleExpansion.tensors2(:Cu, R, V, verbose=0)
-#    println("R = $R, C0 = $C0")
-#    println("   C1 = $(round(C1,2))")
-# end
-
 CC1 = []
 for R in [3, 4, 6, 9, 13, 20]
    athom = cluster(sym, R*r0+2*cutoff(V))              # homogeneous reference configuration
@@ -31,10 +14,10 @@ for R in [3, 4, 6, 9, 13, 20]
    set_constraint!(at, FixedCell(at, free = find(r .< R *r0)))
    set_calculator!(at, V)
 
-   C0, C1 = JuLIPMaterials.PoleExpansion.tensors3(at, athom;
+   C0, C1 = JuLIPMaterials.PoleExpansion.dipole_tensor(at, athom;
             method = :lbfgs, precond = FF(at, V), verbose=0, gtol = 1e-4)
    println("R = $R, C0 = $C0")
-   println("        C1 = $(round(C1,2))")
+   println("        C1 = $(round.(C1,2))")
    push!(CC1, C1)
 end
 
@@ -49,10 +32,6 @@ P = Plots.plot(RR, err, lw=2, ms=12, m=:o, label = "err C1",
          xaxis = (:log, [0.8*RR[1],1.2*RR[end]]), yaxis = (:log, [1e-3, 4]))
 Plots.plot!(RR, 10*RR.^(-2.5), lw=1, ls = :dash, ms = 0, label = "~ R^{-2.5}")
 # Plots.plot!(RR, RR.^(-2.5), lw=1, linestyle = :dash, ms = 0, label = "~ R^{-2.5}")
-
-
-
-
 
 ;
 
