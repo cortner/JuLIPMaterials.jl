@@ -39,9 +39,9 @@ a1, a2, a3 directions. This cell contains two atoms.
 """
 function fcc_110_plane(sym::Symbol)
    # ensure s is actually an FCC species
-   check_fcc(s)
+   check_fcc(sym)
    # get the cubic unit cell dimension
-   a = ( bulk(s, cubic=true) |> defm )[1,1]
+   a = ( bulk(sym, cubic=true) |> defm )[1,1]
    # construct the cell matrix
    F = a*JMat( [ sqrt(2)/2 0    0;
                  0   1     0;
@@ -49,9 +49,8 @@ function fcc_110_plane(sym::Symbol)
    X = a*[ JVec([0.0, 0.0, 0.0]),
            JVec([(1/2)*1/sqrt(2), 1/2, 1/(2*sqrt(2))]) ]
    # construct ASEAtoms
-   at = ASEAtoms("$(s)2")
+   at = Atoms(sym, X)
    set_defm!(at, F)
-   set_positions!(at, X)
    # compute a burgers vector in these coordinates
    b =  a*sqrt(2)/2*JVec([1.0,0.0,0.0])
    # compute a core-offset (to add to any lattice position)
