@@ -12,9 +12,9 @@ include("FCC.jl")
 
 include("BCC.jl")
 
-include("PoleExpansion.jl") 
+include("PoleExpansion.jl")
 
-# include("Si.jl")
+include("Si.jl")
 
 include("Testing.jl")
 

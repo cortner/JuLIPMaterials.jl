@@ -1,10 +1,9 @@
 
 
-module CauchyBorn
+module CauchyBornSi
 
 using JuLIP
 using JuLIP.Potentials: StillingerWeber
-
 import JuLIPMaterials.CLE: elastic_moduli
 
 export WcbQuad
@@ -65,7 +64,7 @@ end
 
 function WcbQuad(calc)
     # sw = sw_eq()
-    at = bulk("Si", pbc=true)
+    at = bulk(:Si, pbc=true)
     set_calculator!(at, calc)
     DpDpW = DpDpWcb(at)
     return WcbQuad(DpDpW, pinv(DpDpW), at, calc, defm(at))

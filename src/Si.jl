@@ -5,7 +5,7 @@
 
 module Si
 
-using JuLIP, JuLIP.ASE, JuLIP.Potentials, QuadGK, ForwardDiff
+using JuLIP, QuadGK, ForwardDiff
 
 import JuLIPMaterials
 
@@ -15,8 +15,9 @@ using JuLIPMaterials.CLE: elastic_moduli, voigt_moduli,
 
 CLE = JuLIPMaterials.CLE
 FCC = JuLIPMaterials.FCC
-CauchyBorn = JuLIPMaterials.CauchyBorn
+# CauchyBorn = JuLIPMaterials.CauchyBorn
 
+include("CauchyBorn_Si.jl")
 
 """
 `si110_plane(s::AbstractString) -> at::ASEAtoms, b, xcore, a `
@@ -34,10 +35,10 @@ Returns
 * `xcore` : a core-offset (to add to any lattice position)
 * `a` : lattice parameter
 """
-function si110_plane(s::AbstractString;
+function si110_plane(s::Symbol;
                      a = defm(bulk(s, cubic=true))[1,1] )
    # TODO: can si110_plane be combined with FCC.fcc_110_plane?
-   @assert s == "Si"
+   @assert s == :Si
    # for Si, default a = 5.43
    # TODO: ensure only that s is an FCC species
    # ====================================================
@@ -50,9 +51,8 @@ function si110_plane(s::AbstractString;
              JVec([         0.0, -0.25,  0.5/sqrt(2) ]),
              JVec([ 0.5/sqrt(2),  0.25,          0.0 ]) ]
    # construct ASEAtoms
-   at = ASEAtoms(string(s,"4"))
+   at = Atoms(s, X)
    set_defm!(at, F)
-   set_positions!(at, X)
    # compute a burgers vector in these coordinates
    b = a * sqrt(2)/2 * JVec([1.0,0.0,0.0])
    # compute a core-offset (to add to any lattice position)
@@ -66,7 +66,7 @@ end
 "a fully equilibrated SW potential"
 function sw_eq()
     T(σ, at) = trace(stress(StillingerWeber(σ=σ), at))
-    at = JuLIP.ASE.bulk("Si", pbc=true)
+    at = bulk(:Si, pbc=true)
     r0 = 2.09474
     r1 = r0 - 0.1
     s0, s1 = T(r0, at), T(r1, at)
@@ -97,21 +97,20 @@ end
 a function that identifies multi-lattice structure in 2 layers of bulk-Si
 (yes - very restrictive but will do for now!)
 """
-function si_multilattice(at)
-    TOL = 0.2
+function si_multilattice(at; TOL = 0.2)
     J0 = Int[]
     J1 = Int[]
     Jdel = Int[]
-    for (i, j, r, R, _) in sites(at, rnn("Si")+0.1)
+    for (i, j, r, R) in sites(at, rnn(:Si)+0.1)
         foundneig = false
         for (jj, RR) in zip(j, R)
-            if (RR[1] == 0.0) && (abs(RR[2] - 1.3575) < TOL)
+            if (abs(RR[1]) <= TOL) && (abs(RR[2] - 1.3575) < TOL)
                 # neighbour above >> make (i, jj) a site
                 push!(J0, i)
                 push!(J1, jj)
                 foundneig = true
                 break
-            elseif (RR[1] == 0.0) && (abs(RR[2] + 1.3575) < TOL)
+            elseif (abs(RR[1]) <= TOL) && (abs(RR[2] + 1.3575) < TOL)
                 # neighbour below >> (jj, i) is a site that will be pushed when i ↔ jj
                 foundneig = true
                 break
@@ -131,7 +130,7 @@ function symml_displacement!(at, u)
     I0, I1, Idel = si_multilattice(at)
     @assert isempty(Idel)  # if Idel is not empty then (for now) we don't know what to do
     X = positions(at)
-    W = CauchyBorn.WcbQuad(calculator(at))   # TODO: generalise this to general calculators
+    W = CauchyBornSi.WcbQuad(calculator(at))   # TODO: generalise this to general calculators
     F0 = defm(W.at)
     p0 = W(F0)
     # transformation matrices
@@ -155,7 +154,7 @@ function ml_displacement!(at, u)
     I0, I1, Idel = si_multilattice(at)
     @assert isempty(Idel)  # if Idel is not empty then (for now) we don't know what to do
     X = positions(at)
-    W = CauchyBorn.WcbQuad(calculator(at))
+    W = CauchyBornSi.WcbQuad(calculator(at))
 
     # transformation matrices
     Tp = [0 1/√2  -1/√2; 1 0 0; 0 1/√2 1/√2]
@@ -186,14 +185,14 @@ in bulk silicon, 110 orientation.
 
 * a : lattice parameter, default value is the default lattice parameter of the species, other allows values are `:equilibrate`
 """
-function edge110(species::AbstractString, R::Real;
+function edge110(species::Symbol, R::Real;
                   truncate=true, cle=:anisotropic, ν=0.25,
                   calc=sw_eq(), sym = true,
                   TOL=1e-4, zDir=1,
                   eos_correction = true,
                   a = defm(bulk(species, cubic=true))[1,1])
 
-   @assert species == "Si"
+   @assert species == :Si
 
    # compute the lattice parameter
    if a == :equilibrate
@@ -210,7 +209,7 @@ function edge110(species::AbstractString, R::Real;
 
 
    if cle == :anisotropic
-      W = CauchyBorn.WcbQuad(calc)
+      W = CauchyBornSi.WcbQuad(calc)
       C = elastic_moduli(W)
       Cv = round.(voigt_moduli(C), 8)
       U = CLE.EdgeCubic(b, Cv, a, x0 = x0)

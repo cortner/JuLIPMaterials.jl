@@ -46,7 +46,6 @@ Or, simply pass in a scalar `normalise = v0`.
 function Wcb(at::AbstractAtoms, calc::AbstractCalculator;
              normalise=:volume, kwargs...)
    const T = Float64
-   @assert length(at) == 1
    set_calculator!(at, calc)
    # compute the normalisation factor; volume or what?
    if normalise == :volume
@@ -103,7 +102,7 @@ div_grad(W::Wcb1, F, x::Vec3{T}; h = 1e-5) where T =
 # ============= Single Species 2-Lattice =================
 
 """
-`struct Wcb2` : single-species 2-lattice Lattice Cauchy--Born potential,
+`struct Wcb2` : single-species 2-lattice Cauchy--Born potential,
 see documentation for `Wcb`
 """
 struct Wcb2{T, TA}
@@ -196,4 +195,7 @@ end
 # =============== GENERAL MULTI-LATTICE FUNCTIONALITY ================
 
 # TODO
+
+
+
 end

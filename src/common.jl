@@ -3,7 +3,7 @@ using JuLIP, StaticArrays, NearestNeighbors
 
 import Base.findin
 
-export strains
+export strains, dists
 
 
 const Vec3{T} = SArray{Tuple{3},T,1,3}
@@ -116,3 +116,6 @@ end
 #    U[Ism] = Xsm - Xlge[Ism]  # = (Xsm - Xrefsm) - (Xlge - Xreflge)
 #    return U
 # end      # TODO: U should not be zero outside Xsm, but U = Xlge - Xlgeref
+
+
+dists(X::Vector{Vec3{T}}, x::Vec3{T}) where {T} = [ norm(y - x) for y in X ]
