@@ -8,7 +8,7 @@ using ..Vec3, ..Mat3, ..Ten43, ..cluster
 function lattice_constants_111(sym::Symbol; calc = nothing)
    # See cell_111 for description of outputs
    if calc == nothing
-      a0 = rnn(s)
+      a0 = rnn(sym)
    else
       at0 = bulk(sym, cubic=true, pbc=true)
       set_constraint!(at0, VariableCell(at0))
@@ -53,17 +53,17 @@ function screw_111(sym::Symbol, R::Float64;
       x0 = x00
    end
    # create a cluster
-   at = cluster(cell_111(sym, calc=calc), R, dims=(1,2))
+   at = cluster(cell_111(sym, calc=calc), R, dims=[1,2], x0=x0)
    at = at * (1,1,layers)
    # get positions  to manipulate them
    X = positions(at) |> mat
    # reference positions
    X0 = copy(X)
-   X0[1,:] -= x0[1]
-   X0[2,:] -= x0[2]
-   set_info!(at, :X0, copy(X))
-   # get coordinates for the dislocation predictor
-   x, y = X[1,:] - x0[1], X[2,:] - x0[2]
+   X0[1,:] -= X0[1,1]+x0[1]
+   X0[2,:] -= X0[2,1]+x0[2]
+   set_data!(at, :X0, copy(X))
+   set_data!(at, :core, X[:,1]+x0)
+   set_positions!(at, X0)
 
    # get the screw displacement (Burgers vector = (0, 0, a0))
    if soln == :isotropic
@@ -91,7 +91,6 @@ function screw_111(sym::Symbol, R::Float64;
    end
 
    set_positions!(at, X)
-   @show cell(at)
    return at
 end
 
