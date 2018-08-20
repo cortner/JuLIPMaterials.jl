@@ -6,7 +6,7 @@ module LGFs
 
 using JuLIP, NeighbourLists
 using JuLIPMaterials.CLE
-using JuLIPMaterials: ee, Vec3, Mat3, DynamicalMatrix1
+using JuLIPMaterials: ee, Vec3, Mat3, ForceConstantMatrix1
 using JuLIPMaterials.CLE: GreenFunction3D
 
 using JuLIP.Potentials: hess
@@ -25,7 +25,7 @@ import Base.length
 * `H` : hessian blocks
 """
 struct LGF1{T <: AbstractFloat, TI}
-   DM::DynamicalMatrix1{T}
+   DM::ForceConstantMatrix1{T}
    Gc::GreenFunction3D{T}
    at::Atoms{T, TI}      # only used to compute geometry information
 end
@@ -44,7 +44,7 @@ function LGF(calc::AbstractCalculator, at::Atoms; Nquad = 10, kwargs...)
    if length(at) > 1
       error("`LGF` : only the Bravais lattice case is currently implements")
    end
-   return LGF1( DynamicalMatrix1(calc, at),
+   return LGF1( ForceConstantMatrix1(calc, at),
                 GreenFunction(calc, at; Nquad = 10, kwargs...),
                 deepcopy(at) )
 end

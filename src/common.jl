@@ -1,7 +1,7 @@
 
 using JuLIP, StaticArrays, NearestNeighbors
 
-import Base.findin
+import Base: findin, *
 
 export strains
 
@@ -30,19 +30,38 @@ strains(U, at; rcut = cutoff(calculator(at))) =
 
 
 
-struct DynamicalMatrix1{T <: AbstractFloat}
+struct ForceConstantMatrix1{T <: AbstractFloat}
    R::Vector{Vec3{T}}
    H::Vector{Mat3{T}}
 end
 
+function *(fcm::ForceConstantMatrix1{T}, t::Tuple{<:Atoms, Vector{<: Vec3}}) where {T}
+   at, U = t
+   V = zeros(Vec3{T}, length(at))
+   rcut = maximum(norm.(fcm.R)) * 1.01
+   # WARNING: this is an extremely naive implementation which needs to be fixed
+   #          as soon as possible
+   for (i, j, _, R) in sites(at, rcut)
+      for n = 1:length(R)
+         for m = 1:length(fcm.R)
+            if norm(R[n] - fcm.R[m]) < 1e-7
+               V[i] += fcm.H[m] * (U[j[n]] - U[i])
+               break
+            end
+         end
+      end
+   end
+   return V
+end
 
 
-DynamicalMatrix1(calc::AbstractCalculator, at::AbstractAtoms) =
-      DynamicalMatrix1(force_constants(calc, at)...)
+ForceConstantMatrix1(calc::AbstractCalculator, at::AbstractAtoms; kwargs...) =
+      ForceConstantMatrix1(force_constants(calc, at; kwargs...)...)
 
-function force_constants(calc::AbstractCalculator, at::Atoms{T}; h = 1e-5) where T <: AbstractFloat
-   @assert length(at) == 1
-   cl = cluster(bulk(chemical_symbol(at.Z[1]), cubic=true), cutoff(calc) + 1)
+function force_constants(calc::AbstractCalculator, at::Atoms{T};
+                         h = 1e-5, rcut = cutoff(calc) + 1) where T <: AbstractFloat
+   @assert length(at) == 1 # assume no basis
+   cl = cluster(at, rcut)
    set_calculator!(cl, calc)
    x = cl[1]  # x ≡ X[1]
    ∂f_∂xi = []
@@ -56,7 +75,6 @@ function force_constants(calc::AbstractCalculator, at::Atoms{T}; h = 1e-5) where
    end
    # convert to dynamical matrix entries
    H = [ - [∂f_∂xi[1][n] ∂f_∂xi[2][n] ∂f_∂xi[3][n]]'  for n = 1:length(cl) ]
-   @show typeof(H)
    # extract the non-zero entries
    Inz = setdiff(find( norm.(H) .> 1e-8 ), [1])
    # . . . and return
