@@ -3,6 +3,8 @@
 
 # we need this to evaluate the annoying integrand in the displacement field
 using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43
+using JuLIPMaterials.CLE: onb3D
+
 using Einsum, StaticArrays
 using GaussQuadrature: legendre
 
@@ -40,7 +42,7 @@ function _autocut_(b::Vec3, t::Vec3)
 
    # Construct a cut plane "automatically", depending on whethere screw or edge
    if abs(b⋅t) > 0.9
-      cut, _ = onb(t)
+      cut, _ = onb3D(t)
    else
       cut = b-(b⋅t)*t
       cut /= norm(cut)

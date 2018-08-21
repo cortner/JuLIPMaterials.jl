@@ -29,6 +29,7 @@ function randmoduli(rnd = 0.1)
 end
 
 ∷(C::Array{Float64, 3}, F::Matrix) = reshape(C, 3, 9) * F[:]
+∷(C::Ten33{Float64}, F::Matrix) = reshape(C, 3, 9) * F[:]
 
 # div C ∇u = C_iajb u_j,ab
 function cleforce(x, u, C)

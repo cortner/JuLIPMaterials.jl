@@ -1,6 +1,7 @@
 
 
 using JuLIP, JuLIP.Potentials
+using JuLIPMaterials: Vec3
 import JuLIPMaterials
 
 MST = JuLIPMaterials
@@ -75,10 +76,9 @@ for (G, id, C) in [
    @test maxerr < 1e-10
 end
 
-for (G, id, C) in [
-            (CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
-            (CLE.GreenFunction(Crand, Nquad = 30), "GreenFunction(30)", Crand) ]
-   print("G = $id: test normalisation of G: ")
+for (G, id, C) in [(CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
+                   (CLE.GreenFunction(Crand, Nquad = 30), "GreenFunction(30)", Crand) ]
+   print("G = $id : test normalisation of G: ")
    err = 0.0
 
    # Test normal derivative integral over sphere via Gaussian quadrature
@@ -88,9 +88,10 @@ for (G, id, C) in [
    I = zeros(3,3)
    DGnu = zeros(3,3)
    for ω in range(0.0, pi/n, 2*n), i=1:n
-      x = [sqrt(1-c[i]^2)*cos(ω),sqrt(1-c[i]^2)*sin(ω),c[i]]
-      @einsum DGnu[a,b]  = C[a,β,γ,δ] * CLE.grad(G,x)[b,γ,δ] * x[β]
-      I -= DGnu*w[i]
+      x = Vec3(sqrt(1-c[i]^2)*cos(ω),sqrt(1-c[i]^2)*sin(ω),c[i])
+      DG = CLE.grad(G,x)
+      @einsum DGnu[a,b] = C[a,β,γ,δ] * DG[b,γ,δ] * x[β]
+      I -= DGnu * w[i]
    end
    I = I*pi/n
    maxerr = norm(I-eye(3))

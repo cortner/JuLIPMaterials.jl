@@ -5,6 +5,14 @@ import Base: findin, *
 
 export strains
 
+const Vec2{T} = SArray{Tuple{2},T,1,2}
+const Mat2{T} = SArray{Tuple{2,2},T,2,4}
+const Ten32{T} = SArray{Tuple{2,2,2},T,3,8}
+const Ten42{T} = SArray{NTuple{4,2},T,4,16}
+const MVec2{T} = MVector{2,T}
+const MMat2{T} = MMatrix{2,2,T}
+const MTen32{T} = MArray{Tuple{2,2,2},T,3,8}
+const MTen42{T} = MArray{NTuple{4,2},T,4,16}
 
 const Vec3{T} = SArray{Tuple{3},T,1,3}
 const Mat3{T} = SArray{Tuple{3,3},T,2,9}
