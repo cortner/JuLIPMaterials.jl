@@ -132,7 +132,7 @@ for (Disl, id, C) in [(CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocatio
       maxerr = max( vecnorm(cleforce(x, u, C), Inf), maxerr )
    end
    println("maxerr = $maxerr")
-   @test maxerr < 1e-12
+   @test maxerr < 1e-11
 end
 
 # Test Burgers vector for edge dislocation implementation
