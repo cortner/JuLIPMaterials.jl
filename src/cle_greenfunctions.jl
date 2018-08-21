@@ -59,7 +59,7 @@ end
 function eval_green(x::Vec3{TT}, ℂ::Ten43, Nquad::Int) where TT
    # allocate
    G = @SMatrix zeros(TT, 3, 3)
-   zz = @MMatrix zeros(TT, 3,3)
+   zz = @MMatrix zeros(TT, 3, 3)
    # Initialise tensors.
    x̂ = x/norm(x)
    # two vectors orthogonal to x.

@@ -183,6 +183,8 @@ end
 
 include("cle_greenfunctions.jl")
 
+include("cle_gfcorrectors3D.jl")
+
 include("cle_dislocations.jl")
 
 end
