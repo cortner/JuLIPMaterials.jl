@@ -69,8 +69,8 @@ function eval_corrector(x, ℂ, FCM, Nquad::Int)
       v0 = t -> _corrector_multiplier( Vec3(z + t*z), ℂ, FCM)
       v1 = t -> ForwardDiff.derivative(v0,t)
       ∂H0z = v1(0.0)
-      Gcorr += -∂H0z + ∂²H0
+      Gcorr += -∂H0z/norm(x) + ∂²H0
    end
    # Normalise appropriately
-   return Gcorr / (8*pi^2*norm(x)^3*Nquad)
+   return Gcorr / (4*pi^2*norm(x)*Nquad)
 end

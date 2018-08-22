@@ -4,10 +4,10 @@ module CLE
 using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
              stress, defm, set_defm!
 
-using StaticArrays
+using StaticArrays, Einsum
 
 using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43,
-         MVec3, MMat3, MTen33, MTen43
+         MVec3, MMat3, MTen33, MTen43, ForceConstantMatrix1
 
 # TODO: get rid of this?
 const Tensor{T} = Array{T, 4}
@@ -59,15 +59,25 @@ function elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms)
       C[i, a, :, :] = (Sp - Sm) / (2*h)
       Ih[i,a] += h
    end
-   # symmetrise it - major symmetries C_{iajb} = C_{jbia}
-   for i = 1:3, a = 1:3, j=1:3, b=1:3
-      C[i,a,j,b] = C[j,b,i,a] = 0.5 * (C[i,a,j,b] + C[j,b,i,a])
-   end
-   # minor symmetries - C_{iajb} = C_{iabj}
-   for i = 1:3, a = 1:3, j=1:3, b=1:3
-      C[i,a,j,b] = C[i,a,b,j] = 0.5 * (C[i,a,j,b] + C[i,a,b,j])
-   end
+   # # symmetrise it - major symmetries C_{iajb} = C_{jbia}
+   # for i = 1:3, a = 1:3, j=1:3, b=1:3
+   #    C[i,a,j,b] = C[j,b,i,a] = 0.5 * (C[i,a,j,b] + C[j,b,i,a])
+   # end
+   # # minor symmetries - C_{iajb} = C_{iabj}
+   # for i = 1:3, a = 1:3, j=1:3, b=1:3
+   #    C[i,a,j,b] = C[i,a,b,j] = 0.5 * (C[i,a,j,b] + C[i,a,b,j])
+   # end
    return C
+end
+
+function elastic_moduli(FCM::ForceConstantMatrix1)
+   ℂ = zeros(3,3,3,3)
+   for i=1:length(FCM.R)
+       ρ = FCM.R[i]
+       Hmat = FCM.H[i]
+       @einsum ℂ[a,b,c,d] = Hmat[a,c] * ρ[b] * ρ[d]
+   end
+   return ℂ
 end
 
 """
