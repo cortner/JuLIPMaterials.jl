@@ -88,10 +88,14 @@ for (G, id, C) in [(CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
    I = zeros(3,3)
    DGnu = zeros(3,3)
    for ω in range(0.0, pi/n, 2*n), i=1:n
-      x = Vec3(sqrt(1-c[i]^2)*cos(ω),sqrt(1-c[i]^2)*sin(ω),c[i])
-      DG = CLE.grad(G,x)
-      @einsum DGnu[a,b] = C[a,β,γ,δ] * DG[b,γ,δ] * x[β]
-      I -= DGnu * w[i]
+      x = [sqrt(1-c[i]^2)*cos(ω),sqrt(1-c[i]^2)*sin(ω),c[i]]
+      # TODO: @einsum seems to have changed behaviour or have a bug
+      # @einsum DGnu[a,b]  = C[a,β,γ,δ] * CLE.grad(G,x)[b,γ,δ] * x[β]
+      for a = 1:3, b = 1:3
+         DGnu[a,b] = sum( C[a,β,γ,δ] * CLE.grad(G,x)[b,γ,δ] * x[β]
+                          for β=1:3,γ=1:3,δ=1:3 )
+      end
+      I -= DGnu*w[i]
    end
    I = I*pi/n
    maxerr = norm(I-eye(3))

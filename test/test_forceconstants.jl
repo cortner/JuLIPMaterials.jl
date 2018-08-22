@@ -16,14 +16,14 @@ minimise!(fe1)
 # get the force constants
 fcm = ForceConstantMatrix1(eam_Fe, fe1, h = 1e-5)
 
-# construct a larger computational cell and compute the hessian of eam_Fe on
-# that cell
-at = fe1 * 10
+println("compute exact hessian on a large cell")
+at = fe1 * 12
 set_constraint!(at, FixedCell(at))
 set_calculator!(at, eam_Fe)
 H = JuLIP.hessian_pos(eam_Fe, at)
 Hvec = JuLIP.hessian(at)
-# random virtual displacement
+
+println("random virtual displacement => compare H * u and fcm * u")
 U = rand(JVecF, length(at))
 Uvec = mat(U)[:]
 V = vecs(Hvec * Uvec)
@@ -32,32 +32,38 @@ V = vecs(Hvec * Uvec)
 
 # now multiply FCM * U
 Vfcm = fcm * (at, U)
-@show maximum(norm.(Vfcm - V)) / maximum(norm.(V))
+err_HxU = maximum(norm.(Vfcm - V)) / maximum(norm.(V))
+@show err_HxU
+println(@test err_HxU < 1e-7)
 
-# another test: do the block match?
+println("Check that individual blocks match")
 X = positions(at)
 x̄ = mean(X)
 r = [norm(x-x̄) for x in X]
 n0 = find( r .== minimum(r) )[1]
+all_found = true
+all_passed = true
 for n = 1:length(at)
    n == n0 && continue
-   norm(H[n0,n]) < 1e-5 && continue
+   norm(H[n0,n]) < 1e-12 && continue
    R = X[n] - X[n0]
    found = false
    for m = 1:length(fcm.R)
       if norm(R - fcm.R[m]) < 1e-7
          found = true
-         if norm(H[n0, m] - fcm.H[m]) < 1e-7
-            println("+")
+         if norm(H[n0, n] - fcm.H[m]) < 1e-5
+            print("+")
          else
-            # print("-")
-            println("error: ", norm(H[n0, m] - fcm.H[m]))
+            all_passed = false
+            print("-")
          end
          break
       end
    end
    if !found
-      # print("x")
-      println("not found: ", norm(H[n0, n]))
+      all_found = false
+      print("x")
    end
 end
+println(@test all_passed)
+println(@test all_found )
