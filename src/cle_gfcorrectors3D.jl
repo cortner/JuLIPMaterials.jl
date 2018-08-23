@@ -88,7 +88,6 @@ function _ddC2inv(k::Vec3{TT},ℂ) where TT
    ddC2inv = zeros(TT,3,3,3,3)
    # Get matrices
    dC2 = _dC2(k,ℂ)
-   C2 = _C2(k,ℂ)
    dC2inv = _dC2inv(k,ℂ)
    C2inv = _C2inv(k,ℂ)
    @einsum ddC2inv[a,b,c,n] = -dC2inv[a,d,n]*dC2[d,e,c]*C2inv[e,b]-
@@ -146,27 +145,29 @@ function _dd_corrector_multiplier(k::Vec3{TT},ℂ,FCM) where TT
 end
 
 "eval_corrector(x::Vec3, ℂ::Ten43, Nquad::Int)"
-function eval_corrector(x, ℂ, FCM, Nquad::Int)
+function eval_corrector(x::Vec3{T}, ℂ, FCM, Nquad::Int) where T
    # allocate
-   Gcorr = @SMatrix zeros(3, 3)
-   zz = @MMatrix zeros(3, 3)
+   Gcorr = @SMatrix zeros(T,3,3)
+   zz = @MMatrix zeros(T,3,3)
    # Initialise tensors.
    x̂ = x/norm(x)
    # two vectors orthogonal to x.
    x1, x2 = onb3D(x̂)
    # Integrate
-   DH2 = zeros(3,3,3)
-   ∂H2 = zeros(3,3)
-   D²H2 = zeros(3,3,3,3)
-   ∂²H2 = zeros(3,3)
+   DH2 = zeros(T,3,3,3)
+   ∂H2 = zeros(T,3,3)
+   D²H2 = zeros(T,3,3,3,3)
+   ∂²H2 = zeros(T,3,3)
    for ω in range(0.0, pi/Nquad, Nquad)
       z = cos(ω) * x1 + sin(ω) * x2
       D²H2 = _dd_corrector_multiplier(z,ℂ,FCM)
-      @einsum ∂²H2[i,j] = D²H2[i,j,a,b]*x̂[a]*x̂[b]
+      for i=1:3, j=1:3
+         ∂²H2[i,j] = x̂' * D²H2[i,j,:,:] * x̂
+      end
       DH2 = _d_corrector_multiplier(z,ℂ,FCM)
       @einsum ∂H2[i,j] = DH2[i,j,a]*z[a]
-      Gcorr += -∂H0z + ∂²H0
+      Gcorr += -∂H2 + ∂²H2
    end
    # Normalise appropriately
-   return Gcorr / (4*pi^2*norm(x)^3*Nquad)
+   return Gcorr / (4*pi*norm(x)^3*Nquad)
 end
