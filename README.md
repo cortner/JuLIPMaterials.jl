@@ -7,13 +7,15 @@ dislocations.
 ## Summary of Library Content
 
 * whole-space Green's functions for elliptic systems with constant coeffs
-   - `CLE.GreenFunction`
-   - `CLE.IsoGreenFcn3D`
-   - TODO: several generalisations missing
+   - 3D Green's function via BBS formula: `CLE.GreenFunction`
+   - 3D Isotropic Green's function via explicit formula:`CLE.IsoGreenFcn3D`
+   - 3D 1st-order corrector via BBS-like formula: `CLE.GreenFunctionCorrector`
 
 * Dislocations CLE fields (still to be cleaned up!)
-   - edge isotropic: `CLE.u_edge_isotropic`
+   - edge isotropic: `CLE.u_edge_isotropic` or `CLE.IsoEdgeDislocation`
    - edge cubic: `CLE.u_edge_fcc_110`
+   - screw isotropic: `CLE.IsoScrewDislocation`
+   - general dislocation via BBS method: `CLE.Dislocation`
 
 * Atomistic Dislocation predictors:
    - Pure Edge Dislocation in FCC: `examples/Edge Dislocation FCC 110.ipynb`
