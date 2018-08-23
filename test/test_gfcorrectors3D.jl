@@ -1,93 +1,164 @@
-using Base.Test, JuLIP, JuLIP.Potentials
+using Base.Test, JuLIP, JuLIP.Potentials, Einsum
 using JuLIPMaterials.CLE, JuLIPMaterials.Testing
 using JuLIPMaterials: Vec3, Mat3, ForceConstantMatrix1
-using Einsum
 using GaussQuadrature: legendre
+using JuLIPMaterials.CLE: _C2, _dC2, _C2inv, _dC2inv, _ddC2inv, _C4, _dC4, _ddC4, _corrector_multiplier, _d_corrector_multiplier, _dd_corrector_multiplier
 
 CLE = JuLIPMaterials.CLE
 using CLE: elastic_moduli
 
-# Set up a reference atomistic calculator
-datapath = joinpath(Pkg.dir("JuLIP"), "data")
-eam_Fe = EAM(datapath * "/pfe.plt",
-             datapath * "/ffe.plt",
-             datapath * "/F_fe.plt")
-
-# equilibrate a unit cell
-fe1 = bulk(:Fe)
-set_constraint!(fe1, VariableCell(fe1))
-set_calculator!(fe1, eam_Fe)
-minimise!(fe1)
-# get the force constants
-fcm = ForceConstantMatrix1(eam_Fe, fe1, h = 1e-5)
-# symmetrise (hack for now)
-for i=1:length(fcm.H)
-    fcm.H[i] = 0.5*(fcm.H[i]+fcm.H[i]')
-end
-# get the elasticity tensor
-ℂ = elastic_moduli(fcm);
-
-# # Set up a simple cubic example.
-# R1 = [ Vec3(1.0,0.0,0.0), Vec3(-1.0,0.0,0.0), Vec3(0.0,1.0,0.0), Vec3(0.0,-1.0,0.0), Vec3(0.0,0.0,1.0), Vec3(0.0,0.0,-1.0) ];
-# R2 = [];
-# for i=-1.0:1.0, j=-1.0:1.0, k=-1.0:1.0
-#     if i*j*k == 0 & ~(Vec3(i,j,k) in R1)
-#         push!(R2,Vec3(i,j,k));
-#     end
-# end
-# R = [R1[:]; R2[:]];
-# R = Array{StaticArrays.SArray{Tuple{3},Float64,1,3},1}(R)
-#
-# a = randn()^2; b = randn()^2;
-# H1 = Mat3(a*(3*eye(3)-ones(3,3)) + b*eye(3))
-# c = 0.5*randn()^2; d = 0.5*randn()^2;
-# H2 = Mat3(c*(3*eye(3)-ones(3,3)) + d*eye(3))
-#
-# H = [];
-# for i=1:length(R1)
-#     push!(H,H1);
-# end
-# for i=1:length(R2)
-#     push!(H,H2);
-# end
-# H = Array{StaticArrays.SArray{Tuple{3,3},Float64,2,9},1}(H)
-#
-# fcm = ForceConstantMatrix1(R,H);
-# # get the elasticity tensor
-# ℂ = elastic_moduli(fcm);
+# Set up a simple reference atomistic calculator
+at = bulk(:Cu)
+r0 = rnn(:Cu)
+lj = lennardjones(r0=r0, rcut=[1.3*r0, 1.7*r0])
+set_calculator!(at, lj)
+set_constraint!(at, VariableCell(at))
+minimise!(at)
+# Get force constants
+fcm = ForceConstantMatrix1(lj, at, h = 1e-5)
+# Get moduli
+ℂ = elastic_moduli(at)
 
 println("----------------------------------------------------------")
 println(" Testing the 3D Green's Function Corrector Implementation")
 println("----------------------------------------------------------")
 
-Gf = GreenFunction(ℂ, Nquad = 8)
-Gcorr = GreenFunctionCorrector(ℂ, fcm, Nquad = 8)
-
-println("Test that Gcorr satisfies the PDE div(C2 ∇Gcorr) = C4[∇]G ")
+println("Test multiplier functions: dC2")
 maxerr = 0.0
-# for i=1:10
-
-    a, x = randvec3(), randvec3()
-    # Compute LHS
-    v = x_ -> Gcorr(x_)*a
-    f1 = cleforce(Vec3(x), v, ℂ)
-    println(f1);
-    # Compute RHS
-    f0 = zeros(3);
-    for i=1:length(fcm.R)
-        u0 = t -> Gf(x+ t * fcm.R[i])*a
-        u1 = t -> ForwardDiff.derivative(u0,t)
-        u2 = t -> ForwardDiff.derivative(u1,t)
-        u3 = t -> ForwardDiff.derivative(u2,t)
-        u4 = t -> ForwardDiff.derivative(u3,t)
-        f0 += fcm.H[i]*u4(0.0)/24
-    end
-    println(f0);
-    # Compare
-    maxerr = max( norm(f0-f1, Inf), maxerr )
-# end
+for i=1:10
+    a, x = Vec3(randvec3()), Vec3(randvec3())
+    ∇C2 = ForwardDiff.derivative(t->_C2(x+t*a,ℂ),0.0)
+    dC2 = _dC2(x,ℂ)
+    dC2a = zeros(3,3)
+    @einsum dC2a[i,j] = dC2[i,j,k]*a[k]
+    maxerr = max(maxerr, norm(dC2a-∇C2));
+end
 println("maxerr = $maxerr")
 @test maxerr < 1e-9
+
+println("Test multiplier functions: dC2inv")
+maxerr = 0.0
+for i=1:10
+    a, x = Vec3(randvec3()), Vec3(randvec3())
+    ∇C2inv = ForwardDiff.derivative(t->_C2inv(x+t*a,ℂ),0.0)
+    dC2inv = _dC2inv(x,ℂ)
+    dC2inva = zeros(3,3)
+    @einsum dC2inva[i,j] = dC2inv[i,j,k]*a[k]
+    maxerr = max(maxerr, norm(dC2inva-∇C2inv));
+end
+println("maxerr = $maxerr")
+@test maxerr < 1e-9
+
+println("Test multiplier functions: ddC2inv")
+maxerr = 0.0
+for i=1:10
+    a, x = Vec3(randvec3()), Vec3(randvec3())
+    ∇²C2inv = ForwardDiff.derivative(s->ForwardDiff.derivative(t->_C2inv(x+t*a,ℂ),s),0.0)
+    ddC2inv = _ddC2inv(x,ℂ)
+    ddC2invaa = zeros(3,3)
+    @einsum ddC2invaa[i,j] = ddC2inv[i,j,k,l]*a[k]*a[l]
+    maxerr = max(maxerr, norm(ddC2invaa-∇²C2inv));
+end
+println("maxerr = $maxerr")
+@test maxerr < 1e-5
+
+println("Test multiplier functions: dC4")
+maxerr = 0.0
+for i=1:10
+    a, x = Vec3(randvec3()), Vec3(randvec3())
+    ∇C4 = ForwardDiff.derivative(t->_C4(x+t*a,fcm),0.0)
+    dC4 = _dC4(x,fcm)
+    dC4a = zeros(3,3)
+    @einsum dC4a[i,j] = dC4[i,j,k]*a[k]
+    maxerr = max(maxerr, norm(dC4a-∇C4));
+end
+println("maxerr = $maxerr")
+@test maxerr < 1e-9
+
+println("Test multiplier functions: ddC4")
+maxerr = 0.0
+for i=1:10
+    a, x = Vec3(randvec3()), Vec3(randvec3())
+    ∇²C4 = ForwardDiff.derivative(s -> ForwardDiff.derivative(t->_C4(x+t*a,fcm),s),0.0)
+    ddC4 = _ddC4(x,fcm)
+    ddC4aa = zeros(3,3)
+    @einsum ddC4aa[i,j] = ddC4[i,j,k,l]*a[k]*a[l]
+    maxerr = max(maxerr, norm(ddC4aa-∇²C4));
+end
+println("maxerr = $maxerr")
+@test maxerr < 1e-5
+
+println("Test multiplier functions: d_corrector_multiplier")
+maxerr = 0.0
+for i=1:10
+    a, x = Vec3(randvec3()), Vec3(randvec3())
+    ∇H4 = ForwardDiff.derivative(t->_corrector_multiplier(x+t*a,ℂ,fcm),0.0)
+    dH4 = _d_corrector_multiplier(x,ℂ,fcm)
+    dH4a = zeros(3,3)
+    @einsum dH4a[i,j] = dH4[i,j,k]*a[k]
+    maxerr = max(maxerr, norm(dH4a-∇H4));
+end
+println("maxerr = $maxerr")
+@test maxerr < 1e-9
+
+println("Test multiplier functions: dd_corrector_multiplier")
+maxerr = 0.0
+for i=1:10
+    a, x = Vec3(randvec3()), Vec3(randvec3())
+    ∇²H4 = ForwardDiff.derivative(s->ForwardDiff.derivative(t->_corrector_multiplier(x+t*a,ℂ,fcm),s),0.0)
+    ddH4 = _dd_corrector_multiplier(x,ℂ,fcm)
+    ddH4aa = zeros(3,3)
+    @einsum ddH4aa[i,j] = ddH4[i,j,k,l]*a[k]*a[l]
+    maxerr = max(maxerr, norm(ddH4aa-∇²H4));
+end
+println("maxerr = $maxerr")
+@test maxerr < 1e-5
+
+# # Set up Green's function and corrector
+# G0 = GreenFunction(ℂ, Nquad = 32)
+# Gcorr = GreenFunctionCorrector(ℂ, fcm, Nquad = 32)
+#
+# println("Test that Gcorr satisfies the PDE div(C2 ∇Gcorr) = C4[∇]G0 ")
+# maxerr = 0.0
+# # for i=1:10
+#
+#     a, x = randvec3(), randvec3()
+#     # Compute LHS
+#     δ = 1e-3;
+#     e1 = Vec3(1.0,0.0,0.0)
+#     e2 = Vec3(0.0,1.0,0.0)
+#     e3 = Vec3(0.0,0.0,1.0)
+#     D²Gcorr = zeros(Vec3,3,3)
+#     D²Gcorr[1,1] = (Gcorr(x+δ*e1)-2*Gcorr(x)+Gcorr(x-δ*e1))*a/δ^2
+#     D²Gcorr[1,2] = (Gcorr(x+δ*(e1+e2)/2)-2*Gcorr(x)+Gcorr(x-δ*(e1+e2)/2))*a/δ^2
+#     D²Gcorr[1,3] = (Gcorr(x+δ*(e1+e3)/2)-2*Gcorr(x)+Gcorr(x-δ*(e1+e3)/2))*a/δ^2
+#     D²Gcorr[2,1] = D²Gcorr[2,1]
+#     D²Gcorr[2,2] = (Gcorr(x+δ*e2)-2*Gcorr(x)+Gcorr(x-δ*e2))*a/δ^2
+#     D²Gcorr[2,3] = (Gcorr(x+δ*(e2+e3)/2)-2*Gcorr(x)+Gcorr(x-δ*(e2+e3)/2))*a/δ^2
+#     D²Gcorr[3,1] = D²Gcorr[1,3]
+#     D²Gcorr[3,2] = D²Gcorr[2,3]
+#     D²Gcorr[3,3] = (Gcorr(x+δ*e3)-2*Gcorr(x)+Gcorr(x-δ*e3))*a/δ^2
+#     LHS = zeros(3)
+#     for i=1:3, j=1:3
+#         LHS += ℂ[:,i,:,j]*D²Gcorr[i,j]
+#     end
+#     # Compute RHS
+#     f0 = zeros(3);
+#
+#     for i=1:length(fcm.R)
+#         u0 = t -> G0(x + t * fcm.R[i])*a
+#         u1 = t -> ForwardDiff.derivative(u0,t)
+#         u2 = t -> ForwardDiff.derivative(u1,t)
+#         u3 = t -> ForwardDiff.derivative(u2,t)
+#         u4 = t -> ForwardDiff.derivative(u3,t)
+#         f0 += fcm.H[i]*u4(0.0)/24
+#     end
+#     println(f0);
+#     # Compare
+#     maxerr = max( norm(f0-f1, Inf), maxerr )
+# # end
+# println("maxerr = $maxerr")
+# @test maxerr < 1e-9
 
 
 # for (G, id, C) in [(CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),

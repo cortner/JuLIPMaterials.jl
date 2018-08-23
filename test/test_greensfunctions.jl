@@ -70,7 +70,7 @@ for (G, id, C) in [
    for n = 1:10
       a, x = randvec3(), randvec3()
       u = x_ -> G(x_) * a
-      maxerr = max( vecnorm(cleforce(x, u, C), Inf), maxerr )
+      maxerr = max( vecnorm(cleforce(Vec3(x), u, C), Inf), maxerr )
    end
    println("maxerr = $maxerr")
    @test maxerr < 1e-10

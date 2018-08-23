@@ -29,15 +29,13 @@ function randmoduli(rnd = 0.1)
    return CLE.elastic_moduli(Cv)
 end
 
-∷(C::Array{Float64, 3}, F::Mat3) = reshape(C, 3, 9) * F[:]
-∷(C::Ten33{Float64}, F::Matrix) = reshape(C, 3, 9) * F[:]
-
 # div C ∇u = C_iajb u_j,ab
 function cleforce(x::Vec3{T}, u, C) where T
     f = Vec3(0.0,0.0,0.0)
     for j = 1:3
         ujab = ForwardDiff.hessian(y->u(y)[j], x)
-        f += C[:,:,j,:] ∷ ujab
+        Cj = reshape(C[:,:,j,:], 3, 9)
+        f += Cj * ujab[:]
     end
     return f
 end

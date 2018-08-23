@@ -4,10 +4,10 @@ using Base.Test
 tests = [
    # "test_elasticity.jl",   # TODO: this one is a joke, needs to be redone
    # "test_greensfunctions.jl",
-   # "test_gfcorrectors3D.jl",
+    "test_gfcorrectors3D.jl",
    # "test_dislocations.jl",
-   #"test_cauchyborn1.jl",
-   "test_forceconstants.jl"
+   # "test_cauchyborn1.jl",
+   # "test_forceconstants.jl"
 ]
 
 println("≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡")
