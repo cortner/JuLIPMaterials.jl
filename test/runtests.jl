@@ -2,7 +2,6 @@ using JuLIPMaterials
 using Base.Test
 
 tests = [
-   # "test_elasticity.jl",   # TODO: this one is a joke, needs to be redone
     "test_greensfunctions.jl",
     "test_gfcorrectors3D.jl",
     "test_dislocations.jl",

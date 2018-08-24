@@ -59,14 +59,14 @@ function elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms)
       C[i, a, :, :] = (Sp - Sm) / (2*h)
       Ih[i,a] += h
    end
-   # # symmetrise it - major symmetries C_{iajb} = C_{jbia}
-   # for i = 1:3, a = 1:3, j=1:3, b=1:3
-   #    C[i,a,j,b] = C[j,b,i,a] = 0.5 * (C[i,a,j,b] + C[j,b,i,a])
-   # end
-   # # minor symmetries - C_{iajb} = C_{iabj}
-   # for i = 1:3, a = 1:3, j=1:3, b=1:3
-   #    C[i,a,j,b] = C[i,a,b,j] = 0.5 * (C[i,a,j,b] + C[i,a,b,j])
-   # end
+   # symmetrise it - major symmetries C_{iajb} = C_{jbia}
+   for i = 1:3, a = 1:3, j=1:3, b=1:3
+      C[i,a,j,b] = C[j,b,i,a] = 0.5 * (C[i,a,j,b] + C[j,b,i,a])
+   end
+   # minor symmetries - C_{iajb} = C_{iabj}
+   for i = 1:3, a = 1:3, j=1:3, b=1:3
+      C[i,a,j,b] = C[i,a,b,j] = 0.5 * (C[i,a,j,b] + C[i,a,b,j])
+   end
    return C
 end
 

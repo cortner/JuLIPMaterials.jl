@@ -128,7 +128,7 @@ for (Disl, id, C) in [(CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocatio
    println("u = $id: test that u satisfies the PDE: ")
    maxerr = 0.0
    for n = 1:10
-      x = randvec3()
+      x = Vec3(randvec3())
       u = x_ -> Disl(x_)
       maxerr = max( vecnorm(cleforce(x, u, C), Inf), maxerr )
    end

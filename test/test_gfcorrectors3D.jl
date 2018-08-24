@@ -2,7 +2,7 @@ using Base.Test, JuLIP, JuLIP.Potentials, Einsum
 using JuLIPMaterials.CLE, JuLIPMaterials.Testing
 using JuLIPMaterials: Vec3, Mat3, ForceConstantMatrix1
 using GaussQuadrature: legendre
-using JuLIPMaterials.CLE: _C2, _dC2, _C2inv, _dC2inv, _ddC2inv, _C4, _dC4, _ddC4, _corrector_multiplier, _d_corrector_multiplier, _dd_corrector_multiplier
+using JuLIPMaterials.CLE: _C2, _dC2, _C2inv, _dC2inv, _dC2inv1, _ddC2inv, _ddC2inv1, _C4, _dC4, _ddC4, _corrector_multiplier, _d_corrector_multiplier, _dd_corrector_multiplier
 
 CLE = JuLIPMaterials.CLE
 using CLE: elastic_moduli
@@ -49,6 +49,19 @@ end
 println("maxerr = $maxerr")
 @test maxerr < 1e-9
 
+println("Test multiplier functions: dC2inv1")
+maxerr = 0.0
+for i=1:10
+    a, x = Vec3(randvec3()), Vec3(randvec3())
+    ∇C2inv = ForwardDiff.derivative(t->_C2inv(x+t*a,ℂ),0.0)
+    dC2inv1 = _dC2inv1(x,ℂ)
+    dC2inv1a = zeros(3,3)
+    @einsum dC2inv1a[i,j] = dC2inv1[i,j,k]*a[k]
+    maxerr = max(maxerr, norm(dC2inv1a-∇C2inv));
+end
+println("maxerr = $maxerr")
+@test maxerr < 1e-9
+
 println("Test multiplier functions: ddC2inv")
 maxerr = 0.0
 for i=1:10
@@ -58,6 +71,19 @@ for i=1:10
     ddC2invaa = zeros(3,3)
     @einsum ddC2invaa[i,j] = ddC2inv[i,j,k,l]*a[k]*a[l]
     maxerr = max(maxerr, norm(ddC2invaa-∇²C2inv));
+end
+println("maxerr = $maxerr")
+@test maxerr < 1e-5
+
+println("Test multiplier functions: ddC2inv1")
+maxerr = 0.0
+for i=1:10
+    a, x = Vec3(randvec3()), Vec3(randvec3())
+    ∇²C2inv = ForwardDiff.derivative(s -> ForwardDiff.derivative(t->_C2inv(x+t*a,ℂ),s),0.0)
+    ddC2inv1 = _ddC2inv1(x,ℂ)
+    ddC2inv1aa = zeros(3,3)
+    @einsum ddC2inv1aa[i,j] = ddC2inv1[i,j,k,l]*a[k]*a[l]
+    maxerr = max(maxerr, norm(ddC2inv1aa-∇²C2inv));
 end
 println("maxerr = $maxerr")
 @test maxerr < 1e-5
