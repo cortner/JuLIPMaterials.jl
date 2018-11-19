@@ -6,6 +6,7 @@ using ForwardDiff
 import JuLIPMaterials
 using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43,
                              MVec3, MMat3, MTen33, MTen43
+using StaticArrays
 
 CLE = JuLIPMaterials.CLE
 
@@ -28,16 +29,15 @@ function randmoduli(rnd = 0.1)
    return CLE.elastic_moduli(Cv)
 end
 
-∷(C::Array{Float64, 3}, F::Matrix) = reshape(C, 3, 9) * F[:]
-
 # div C ∇u = C_iajb u_j,ab
-function cleforce(x, u, C)
-    f = zeros(3)
+function cleforce(x::Vec3{T}, u, C) where T
+    f = Vec3(0.0,0.0,0.0)
     for j = 1:3
         ujab = ForwardDiff.hessian(y->u(y)[j], x)
-        f += C[:,:,j,:] ∷ ujab
+        Cj = reshape(C[:,:,j,:], 3, 9)
+        f += Cj * ujab[:]
     end
-    return Vec3(f)
+    return f
 end
 
 

@@ -4,13 +4,32 @@ module CLE
 using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
              stress, defm, set_defm!
 
-using StaticArrays
+using StaticArrays, Einsum
 
 using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43,
-         MVec3, MMat3, MTen33, MTen43
+         MVec3, MMat3, MTen33, MTen43, ForceConstantMatrix1
 
 # TODO: get rid of this?
 const Tensor{T} = Array{T, 4}
+
+# extend `angle` to avoid going via ℂ
+Base.angle(x, y) = atan2(y, x)
+
+"convert normalised vector to spherical coordinates"
+spherical(x) = angle(x[1], x[2]), angle(norm(x[1:2]), x[3])
+
+"convert spherical to euclidean coordinates on the unit sphere"
+euclidean(φ, ψ) = Vec3(cos(ψ) * cos(φ), cos(ψ) * sin(φ), sin(ψ))
+
+"given a vector x ∈ ℝ³, return `z0, z1` where `(x/norm(x),z0,z1)` form a right--handed ONB."
+function onb3D{T}(x::Vec3{T})
+   x /= norm(x)
+   φ, ψ = spherical(x)
+   return Vec3{T}( sin(ψ)*cos(φ), sin(ψ)*sin(φ), -cos(ψ) ),
+          Vec3{T}(-sin(φ), cos(φ), zero(T) )
+end
+
+
 
 """
 * `elastic_moduli(at::AbstractAtoms)`
@@ -40,15 +59,25 @@ function elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms)
       C[i, a, :, :] = (Sp - Sm) / (2*h)
       Ih[i,a] += h
    end
-   # # symmetrise it - major symmetries C_{iajb} = C_{jbia}
-   # for i = 1:3, a = 1:3, j=1:3, b=1:3
-   #    C[i,a,j,b] = C[j,b,i,a] = 0.5 * (C[i,a,j,b] + C[j,b,i,a])
-   # end
-   # # minor symmetries - C_{iajb} = C_{iabj}
-   # for i = 1:3, a = 1:3, j=1:3, b=1:3
-   #    C[i,a,j,b] = C[i,a,b,j] = 0.5 * (C[i,a,j,b] + C[i,a,b,j])
-   # end
+   # symmetrise it - major symmetries C_{iajb} = C_{jbia}
+   for i = 1:3, a = 1:3, j=1:3, b=1:3
+      C[i,a,j,b] = C[j,b,i,a] = 0.5 * (C[i,a,j,b] + C[j,b,i,a])
+   end
+   # minor symmetries - C_{iajb} = C_{iabj}
+   for i = 1:3, a = 1:3, j=1:3, b=1:3
+      C[i,a,j,b] = C[i,a,b,j] = 0.5 * (C[i,a,j,b] + C[i,a,b,j])
+   end
    return C
+end
+
+function elastic_moduli(FCM::ForceConstantMatrix1)
+   ℂ = zeros(3,3,3,3)
+   for i=1:length(FCM.R)
+       ρ = FCM.R[i]
+       Hmat = FCM.H[i]
+       @einsum ℂ[a,b,c,d] = Hmat[a,c] * ρ[b] * ρ[d]
+   end
+   return ℂ
 end
 
 """
@@ -90,12 +119,21 @@ corresponding to the Lame parameters λ, μ.
 """
 function isotropic_moduli(λ, μ)
    K = λ + μ * 2 / 3
-   C = [ K * I[i,j] * I[k,l] + μ * (I[i,k]*I[j,l] + I[i,l]*I[j,k] - 2/3*I[i,j]*I[k,l])
+   C = @SArray [ K * I[i,j] * I[k,l] + μ * (I[i,k]*I[j,l] + I[i,l]*I[j,k] - 2/3*I[i,j]*I[k,l])
          for i = 1:3, j = 1:3, k = 1:3, l = 1:3 ]
    return C
 end
 
-
+"""
+`isotropic_moduli2D(λ, μ)`: compute 4th order tensor of elastic moduli
+(in 2D planar elasticity) corresponding to the Lame parameters λ, μ.
+"""
+function isotropic_moduli2D(λ, μ)
+   K = λ + μ * 2 / 3
+   C = @SArray [ K * I[i,j] * I[k,l] + μ * (I[i,k]*I[j,l] + I[i,l]*I[j,k] - 2/3*I[i,j]*I[k,l])
+         for i = 1:2, j = 1:2, k = 1:2, l = 1:2 ]
+   return C
+end
 
 
 function zener_anisotropy_index(C::Tensor)
@@ -154,6 +192,8 @@ end
 # """
 
 include("cle_greenfunctions.jl")
+
+include("cle_gfcorrectors3D.jl")
 
 include("cle_dislocations.jl")
 

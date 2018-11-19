@@ -1,12 +1,13 @@
 
 
 using JuLIP, JuLIP.Potentials
+using JuLIPMaterials: Vec3
 import JuLIPMaterials
 
 MST = JuLIPMaterials
 CLE = MST.CLE
 
-using CLE: grad, onb, QSB
+using CLE: grad, onb3D, QSB
 using MST.Testing
 using Einsum
 
@@ -24,13 +25,13 @@ println("Test basis orientation implemented correctly: ")
 maxerr = 0.0
 # Check vertical
 a = [0.0,0.0,1.0]
-b,c = onb(MST.Vec3(a))
+b,c = onb3D(MST.Vec3(a))
 maxerr = max( maxerr, abs( (a×b)⋅c - 1.0 ) )
 # Check random directions
 for n = 1:10
    a = randvec3()
    a /= norm(a)
-   b,c = onb(MST.Vec3(a))
+   b,c = onb3D(MST.Vec3(a))
    maxerr = max( maxerr, abs( (a×b)⋅c - 1.0 ) )
 end
 println("maxerr = $maxerr")
@@ -41,7 +42,7 @@ maxerr_1 = 0.0
 maxerr_2 = 0.0
 # Check vertical
 a = [0.0,0.0,1.0]
-b,c = onb(MST.Vec3(a))
+b,c = onb3D(MST.Vec3(a))
 Q,S,B = QSB(Ciso,b,c,30)
 maxerr_1 = max( maxerr_1, vecnorm(4*π*B*Q+S*S + eye(3), Inf) )
 maxerr_2 = max( maxerr_2, vecnorm(Q*S'+S*Q, Inf) )
@@ -49,7 +50,7 @@ maxerr_2 = max( maxerr_2, vecnorm(Q*S'+S*Q, Inf) )
 for n = 1:10
    a = randvec3()
    a /= norm(a)
-   b,c = onb(MST.Vec3(a))
+   b,c = onb3D(MST.Vec3(a))
    Q,S,B = QSB(Ciso,b,c,30)
    maxerr_1 = max( maxerr_1, vecnorm(4*π*B*Q+S*S + eye(3), Inf) )
    maxerr_2 = max( maxerr_2, vecnorm(Q*S'+S*Q, Inf) )
@@ -61,8 +62,8 @@ println("maxerr_2 = $maxerr_2")
 
 # Test explicit edge formula vs anistropic one
 println("Test agreement between anisotopic and isotropic edge dislocation: ")
-b = [1.0,0.0,0.0]
-t = [0.0,0.0,1.0]
+b = Vec3(1.0,0.0,0.0)
+t = Vec3(0.0,0.0,1.0)
 u0 = CLE.Dislocation(b, t, Ciso, Nquad = 40)
 uedge = CLE.IsoEdgeDislocation3D(λ, μ, b[1])
 maxerr = 0.0
@@ -79,8 +80,8 @@ println("maxerr = $maxerr, maxerr_g = $maxerr_g")
 # Test explicit screw formula vs anistropic one
 println("Test agreement between anisotopic and isotropic screw dislocation: ")
 Ciso = CLE.isotropic_moduli(λ, μ)
-b = [0.0,0.0,1.0]
-t = [0.0,0.0,1.0]
+b = Vec3(0.0,0.0,1.0)
+t = Vec3(0.0,0.0,1.0)
 u0 = CLE.Dislocation(b, t, Ciso, Nquad = 40)
 uscrew = CLE.IsoScrewDislocation3D(b[3])
 maxerr = 0.0
@@ -127,7 +128,7 @@ for (Disl, id, C) in [(CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocatio
    println("u = $id: test that u satisfies the PDE: ")
    maxerr = 0.0
    for n = 1:10
-      x = randvec3()
+      x = Vec3(randvec3())
       u = x_ -> Disl(x_)
       maxerr = max( vecnorm(cleforce(x, u, C), Inf), maxerr )
    end

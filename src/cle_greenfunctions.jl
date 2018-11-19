@@ -1,29 +1,11 @@
 
-
-
 using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43
+using JuLIPMaterials.CLE: onb3D, euclidean, spherical
 
 using Einsum, StaticArrays
 
+
 export GreenFunction, IsoGreenFcn3D, grad
-
-
-# extend `angle` to avoid going via ℂ
-Base.angle(x, y) = atan2(y, x)
-
-"convert normalised vector to spherical coordinates"
-spherical(x) = angle(x[1], x[2]), angle(norm(x[1:2]), x[3])
-
-"convert spherical to euclidean coordinates on the unit sphere"
-euclidean(φ, ψ) = Vec3(cos(ψ) * cos(φ), cos(ψ) * sin(φ), sin(ψ))
-
-"given a vector x ∈ ℝ³, return `z0, z1` where `(x/norm(x),z0,z1)` form a right--handed ONB."
-function onb{T}(x::Vec3{T})
-   x /= norm(x)
-   φ, ψ = spherical(x)
-   return Vec3{T}( sin(ψ)*cos(φ), sin(ψ)*sin(φ), -cos(ψ) ),
-          Vec3{T}(-sin(φ), cos(φ), zero(T) )
-end
 
 # ========== Implementation of the 3D Green's Function =============
 
@@ -77,11 +59,11 @@ end
 function eval_green(x::Vec3{TT}, ℂ::Ten43, Nquad::Int) where TT
    # allocate
    G = @SMatrix zeros(TT, 3, 3)
-   zz = @MMatrix zeros(TT, 3,3)
+   zz = @MMatrix zeros(TT, 3, 3)
    # Initialise tensors.
    x̂ = x/norm(x)
    # two vectors orthogonal to x.
-   x1, x2 = onb(x̂)
+   x1, x2 = onb3D(x̂)
    # Integrate
    for ω in range(0.0, pi/Nquad, Nquad)
       z = cos(ω) * x1 + sin(ω) * x2
@@ -102,7 +84,7 @@ function grad_green(x::Vec3{TT}, ℂ::Ten43, Nquad::Int) where TT
    # Initialise tensors.
    x̂ = x/norm(x)
    # two vectors orthogonal to x.
-   x1, x2 = onb(x̂)
+   x1, x2 = onb3D(x̂)
    # Integrate
    for ω in range(0.0, pi/Nquad, Nquad)
       z = cos(ω) * x1 + sin(ω) * x2

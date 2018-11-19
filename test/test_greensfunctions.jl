@@ -1,6 +1,7 @@
 
 
 using JuLIP, JuLIP.Potentials
+using JuLIPMaterials: Vec3
 import JuLIPMaterials
 
 MST = JuLIPMaterials
@@ -69,16 +70,15 @@ for (G, id, C) in [
    for n = 1:10
       a, x = randvec3(), randvec3()
       u = x_ -> G(x_) * a
-      maxerr = max( vecnorm(cleforce(x, u, C), Inf), maxerr )
+      maxerr = max( vecnorm(cleforce(Vec3(x), u, C), Inf), maxerr )
    end
    println("maxerr = $maxerr")
    @test maxerr < 1e-10
 end
 
-for (G, id, C) in [
-            (CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
-            (CLE.GreenFunction(Crand, Nquad = 30), "GreenFunction(30)", Crand) ]
-   print("G = $id: test normalisation of G: ")
+for (G, id, C) in [(CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
+                   (CLE.GreenFunction(Crand, Nquad = 30), "GreenFunction(30)", Crand) ]
+   print("G = $id : test normalisation of G: ")
    err = 0.0
 
    # Test normal derivative integral over sphere via Gaussian quadrature
@@ -89,7 +89,7 @@ for (G, id, C) in [
    DGnu = zeros(3,3)
    for ω in range(0.0, pi/n, 2*n), i=1:n
       x = [sqrt(1-c[i]^2)*cos(ω),sqrt(1-c[i]^2)*sin(ω),c[i]]
-      # TODO: @einsum seems to have changed behaviour or have a bug 
+      # TODO: @einsum seems to have changed behaviour or have a bug
       # @einsum DGnu[a,b]  = C[a,β,γ,δ] * CLE.grad(G,x)[b,γ,δ] * x[β]
       for a = 1:3, b = 1:3
          DGnu[a,b] = sum( C[a,β,γ,δ] * CLE.grad(G,x)[b,γ,δ] * x[β]
