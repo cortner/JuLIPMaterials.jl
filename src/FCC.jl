@@ -15,7 +15,7 @@ ensure that species `sym` actually crystallises to FCC
 """
 function check_fcc(sym::Symbol)
    F = defm(bulk(sym))
-   @assert vecnorm(F/F[1,2] - Afcc) < 1e-12
+   @assert norm(F/F[1,2] - Afcc) < 1e-12
 end
 
 
@@ -169,7 +169,7 @@ function fcc_edge_geom(sym::Symbol, R::Real;
    if truncate
       F = defm(at) # store F for later use
       X = vecs(X)  # find points within radius
-      IR = find( [vecnorm(x[1:2] - xcore) for x in X] .<= R * a/√2 )
+      IR = find( [norm(x[1:2] - xcore) for x in X] .<= R * a/√2 )
       X = X[IR]
       at = Atoms(sym, X)  # generate a new atoms object
       set_defm!(at, F)                 # and insert the old cell shape

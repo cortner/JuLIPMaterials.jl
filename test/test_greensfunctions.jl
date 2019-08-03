@@ -3,14 +3,13 @@
 using JuLIP, JuLIP.Potentials
 using JuLIPMaterials: Vec3
 import JuLIPMaterials
+const CLE = JuLIPMaterials.CLE
 
-MST = JuLIPMaterials
-CLE = MST.CLE
-
-using CLE: grad
-using MST.Testing
+using JuLIPMaterials.CLE: grad
+using JuLIPMaterials.Testing
 using Einsum
 using GaussQuadrature: legendre
+using LinearAlgebra, ForwardDiff
 
 println("------------------------------------------------------------")
 println(" Testing the 3D Anisotropic Green's Function Implementation")
@@ -20,7 +19,7 @@ print("check conversion between spherical and euclidean: ")
 maxerr = 0.0
 for n = 1:10
    x = randvec3(1.0, 1.0)
-   maxerr = max(maxerr, norm(x - CLE.euclidean(CLE.spherical(x)...)))
+   global maxerr = max(maxerr, norm(x - CLE.euclidean(CLE.spherical(x)...)))
 end
 println(@test maxerr < 1e-14)
 println("maxerr = $maxerr")
@@ -36,8 +35,8 @@ maxerr = 0.0
 maxerr_g = 0.0
 for n = 1:10
    x = randvec3()
-   maxerr = max( maxerr, vecnorm(G(x) - Giso(x), Inf) )
-   maxerr_g = max(maxerr_g, vecnorm(grad(G, x) - grad(Giso, x), Inf) )
+   global maxerr = max( maxerr, norm(G(x) - Giso(x), Inf) )
+   global maxerr_g = max(maxerr_g, norm(grad(G, x) - grad(Giso, x), Inf) )
 end
 println("maxerr = $maxerr, maxerr_g = $maxerr_g")
 println(@test maxerr < 1e-12)
@@ -56,7 +55,7 @@ for (G, id, C) in [ (CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
       u = x_ -> (a' * G(x_))[:]
       ∂u = x_ -> reshape(a' *  reshape(grad(G, x_), 3, 9), 3, 3)
       ∂uad = x_ -> ForwardDiff.jacobian(u, x_)
-      maxerr = max( maxerr, vecnorm(∂u(x) - ∂uad(x), Inf) )
+      maxerr = max( maxerr, norm(∂u(x) - ∂uad(x), Inf) )
    end
    println("maxerr = $maxerr")
    println(@test maxerr < 1e-12)
@@ -70,7 +69,7 @@ for (G, id, C) in [
    for n = 1:10
       a, x = randvec3(), randvec3()
       u = x_ -> G(x_) * a
-      maxerr = max( vecnorm(cleforce(Vec3(x), u, C), Inf), maxerr )
+      maxerr = max( norm(cleforce(Vec3(x), u, C), Inf), maxerr )
    end
    println("maxerr = $maxerr")
    println(@test maxerr < 1e-10)
@@ -98,7 +97,7 @@ for (G, id, C) in [(CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
       I -= DGnu*w[i]
    end
    I = I*pi/n
-   maxerr = norm(I-eye(3))
+   maxerr = norm(I  - [1.0 0.0 0.0; 0.0 1.0 0.0; 0.0 0.0 1.0])
    println("maxerr = $maxerr")
    println(@test maxerr < 1e-12)
 end
@@ -111,8 +110,9 @@ C = Crand
 xtest = [ randvec3() for n = 1:10 ]
 G0 = CLE.GreenFunction(C, Nquad = 30)
 for nquad in [2, 4, 6, 8, 10, 12, 14]
+   global xtest, G0, G
    G = CLE.GreenFunction(C, Nquad = nquad)
-   err = maximum( vecnorm(G0(x) - G(x), Inf)   for x in xtest )
-   err_g = maximum( vecnorm(grad(G0, x) - grad(G, x), Inf)   for x in xtest )
+   err = maximum( norm(G0(x) - G(x), Inf)   for x in xtest )
+   err_g = maximum( norm(grad(G0, x) - grad(G, x), Inf)   for x in xtest )
    @printf("   %2d  | %.3e | %.3e  \n", nquad, err, err_g)
 end

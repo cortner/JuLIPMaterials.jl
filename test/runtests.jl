@@ -1,5 +1,5 @@
 using JuLIPMaterials
-using Base.Test
+using Test
 
 tests = [
     "test_greensfunctions.jl",

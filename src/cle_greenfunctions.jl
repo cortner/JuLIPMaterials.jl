@@ -4,6 +4,7 @@ using JuLIPMaterials.CLE: onb3D, euclidean, spherical
 
 using Einsum, StaticArrays
 
+using LinearAlgebra
 
 export GreenFunction, IsoGreenFcn3D, grad
 
@@ -66,7 +67,7 @@ function eval_green(x::Vec3{TT}, ℂ::Ten43, Nquad::Int) where TT
    # two vectors orthogonal to x.
    x1, x2 = onb3D(x̂)
    # Integrate
-   for ω in range(0.0, pi/Nquad, Nquad)
+   for ω in range(0.0, step=pi/Nquad, length=Nquad)
       z = cos(ω) * x1 + sin(ω) * x2
       @einsum zz[i,j] = z[α] * ℂ[i,α,j,β] * z[β]
       # Perform integration
@@ -87,7 +88,7 @@ function grad_green(x::Vec3{TT}, ℂ::Ten43, Nquad::Int) where TT
    # two vectors orthogonal to x.
    x1, x2 = onb3D(x̂)
    # Integrate
-   for ω in range(0.0, pi/Nquad, Nquad)
+   for ω in range(0.0, step=pi/Nquad, length=Nquad)
       z = cos(ω) * x1 + sin(ω) * x2
       @einsum zz[i,j] = z[α] * ℂ[i,α,j,β] * z[β]
       @einsum zT[i,j] = z[α] * ℂ[i,α,j,β] * x̂[β]
@@ -126,7 +127,7 @@ end
 
 "isotropic CLE Green's function"
 function eval_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T
-   Id = @SMatrix eye(T, 3)
+   Id = SMatrix{3,3,T}(I)
    x̂ = x/norm(x)
    return (((λ+3*μ)/(λ+2*μ)/norm(x)) * Id  +
                ((λ+μ)/(λ+2*μ)/norm(x)) * x̂ * x̂') / (8.0*π*μ)
@@ -135,7 +136,7 @@ end
 "gradient of isotropic CLE Green's function"
 function grad_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T
    DG = @MArray zeros(T, 3, 3, 3)
-   Id = @SArray eye(T, 3)
+   Id = SMatrix{3,3,T}(I)
    x̂ = x / norm(x)
    for i = 1:3, j = 1:3, k = 1:3
       DG[i,j,k] = (λ+μ) * (Id[i,k] * x̂[j] + Id[j,k] * x̂[i]) - (λ+3*μ) * Id[i,j] * x̂[k] - 3*(λ+μ) * x̂[i] * x̂[j] * x̂[k]

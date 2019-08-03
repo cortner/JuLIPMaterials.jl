@@ -13,7 +13,7 @@ using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43,
 const Tensor{T} = Array{T, 4}
 
 # extend `angle` to avoid going via ℂ
-Base.angle(x, y) = atan2(y, x)
+Base.angle(x, y) = atan(y, x)
 
 "convert normalised vector to spherical coordinates"
 spherical(x) = angle(x[1], x[2]), angle(norm(x[1:2]), x[3])
