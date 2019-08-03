@@ -2,7 +2,7 @@
 using JuLIP, StaticArrays, NearestNeighbors, LinearAlgebra
 using JuLIP: AbstractAtoms, AbstractCalculator
 
-import Base: findin, *
+import Base: *
 
 export strains
 
@@ -68,11 +68,12 @@ ForceConstantMatrix1(calc::AbstractCalculator, at::AbstractAtoms; kwargs...) =
       ForceConstantMatrix1(force_constants(calc, at; kwargs...)...)
 
 function force_constants(calc::AbstractCalculator, at::Atoms{T};
-                         h = 1e-5, rcut = 2.01*cutoff(calc) + 1) where T <: AbstractFloat
+                         h = 1e-5, rcut = 2.01*cutoff(calc) + 1
+                         ) where T <: AbstractFloat
    @assert length(at) == 1 # assume no basis
    cl = cluster(at, rcut)
    set_calculator!(cl, calc)
-   x = cl[1]  # x ≡ X[1]
+   x = cl[1]::Vec3{T}  # x ≡ X[1]
    ∂f_∂xi = []
    for i = 1:3
       cl[1] = x + h * ee(i)
@@ -87,7 +88,7 @@ function force_constants(calc::AbstractCalculator, at::Atoms{T};
    # extract the non-zero entries
    Inz = setdiff(findall( norm.(H) .> 1e-8 ), [1])
    # . . . and return
-   R = [y - x for y in positions(cl)[Inz]]
+   R = Vec3{T}[y - x for y in positions(cl)[Inz]]
    return R, H[Inz]
 end
 
