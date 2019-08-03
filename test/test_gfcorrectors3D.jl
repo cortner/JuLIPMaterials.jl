@@ -1,11 +1,15 @@
-using Base.Test, JuLIP, JuLIP.Potentials, Einsum
+using Test, JuLIP, JuLIP.Potentials, Einsum
 using JuLIPMaterials.CLE, JuLIPMaterials.Testing
 using JuLIPMaterials: Vec3, Mat3, ForceConstantMatrix1
 using GaussQuadrature: legendre
-using JuLIPMaterials.CLE: _C2, _dC2, _C2inv, _dC2inv, _dC2inv1, _ddC2inv, _ddC2inv1, _C4, _dC4, _ddC4, _corrector_multiplier, _d_corrector_multiplier, _dd_corrector_multiplier
+using JuLIPMaterials.CLE: _C2, _dC2, _C2inv, _dC2inv, _dC2inv1, _ddC2inv,
+                          _ddC2inv1, _C4, _dC4, _ddC4, _corrector_multiplier,
+                          _d_corrector_multiplier, _dd_corrector_multiplier,
+                          elastic_moduli
 
-CLE = JuLIPMaterials.CLE
-using CLE: elastic_moduli
+const CLE = JuLIPMaterials.CLE
+
+using LinearAlgebra, Printf
 
 # Set up a simple reference atomistic calculator
 at = bulk(:Cu)
@@ -31,7 +35,7 @@ for i=1:10
     dC2 = _dC2(x,ℂ)
     dC2a = zeros(3,3)
     @einsum dC2a[i,j] = dC2[i,j,k]*a[k]
-    maxerr = max(maxerr, norm(dC2a-∇C2));
+    global maxerr = max(maxerr, norm(dC2a-∇C2));
 end
 println("maxerr = $maxerr")
 @test maxerr < 1e-9
@@ -44,7 +48,7 @@ for i=1:10
     dC2inv = _dC2inv(x,ℂ)
     dC2inva = zeros(3,3)
     @einsum dC2inva[i,j] = dC2inv[i,j,k]*a[k]
-    maxerr = max(maxerr, norm(dC2inva-∇C2inv));
+    global maxerr = max(maxerr, norm(dC2inva-∇C2inv));
 end
 println("maxerr = $maxerr")
 @test maxerr < 1e-9
@@ -57,7 +61,7 @@ for i=1:10
     dC2inv1 = _dC2inv1(x,ℂ)
     dC2inv1a = zeros(3,3)
     @einsum dC2inv1a[i,j] = dC2inv1[i,j,k]*a[k]
-    maxerr = max(maxerr, norm(dC2inv1a-∇C2inv));
+    global maxerr = max(maxerr, norm(dC2inv1a-∇C2inv));
 end
 println("maxerr = $maxerr")
 @test maxerr < 1e-9
@@ -70,7 +74,7 @@ for i=1:10
     ddC2inv = _ddC2inv(x,ℂ)
     ddC2invaa = zeros(3,3)
     @einsum ddC2invaa[i,j] = ddC2inv[i,j,k,l]*a[k]*a[l]
-    maxerr = max(maxerr, norm(ddC2invaa-∇²C2inv));
+    global maxerr = max(maxerr, norm(ddC2invaa-∇²C2inv));
 end
 println("maxerr = $maxerr")
 @test maxerr < 1e-5
@@ -83,7 +87,7 @@ for i=1:10
     ddC2inv1 = _ddC2inv1(x,ℂ)
     ddC2inv1aa = zeros(3,3)
     @einsum ddC2inv1aa[i,j] = ddC2inv1[i,j,k,l]*a[k]*a[l]
-    maxerr = max(maxerr, norm(ddC2inv1aa-∇²C2inv));
+    global maxerr = max(maxerr, norm(ddC2inv1aa-∇²C2inv));
 end
 println("maxerr = $maxerr")
 @test maxerr < 1e-5
@@ -96,7 +100,7 @@ for i=1:10
     dC4 = _dC4(x,fcm)
     dC4a = zeros(3,3)
     @einsum dC4a[i,j] = dC4[i,j,k]*a[k]
-    maxerr = max(maxerr, norm(dC4a-∇C4));
+    global maxerr = max(maxerr, norm(dC4a-∇C4));
 end
 println("maxerr = $maxerr")
 @test maxerr < 1e-9
@@ -109,7 +113,7 @@ for i=1:10
     ddC4 = _ddC4(x,fcm)
     ddC4aa = zeros(3,3)
     @einsum ddC4aa[i,j] = ddC4[i,j,k,l]*a[k]*a[l]
-    maxerr = max(maxerr, norm(ddC4aa-∇²C4));
+    global maxerr = max(maxerr, norm(ddC4aa-∇²C4));
 end
 println("maxerr = $maxerr")
 @test maxerr < 1e-5
@@ -122,7 +126,7 @@ for i=1:10
     dH4 = _d_corrector_multiplier(x,ℂ,fcm)
     dH4a = zeros(3,3)
     @einsum dH4a[i,j] = dH4[i,j,k]*a[k]
-    maxerr = max(maxerr, norm(dH4a-∇H4));
+    global maxerr = max(maxerr, norm(dH4a-∇H4));
 end
 println("maxerr = $maxerr")
 @test maxerr < 1e-9
@@ -135,7 +139,7 @@ for i=1:10
     ddH4 = _dd_corrector_multiplier(x,ℂ,fcm)
     ddH4aa = zeros(3,3)
     @einsum ddH4aa[i,j] = ddH4[i,j,k,l]*a[k]*a[l]
-    maxerr = max(maxerr, norm(ddH4aa-∇²H4));
+    global maxerr = max(maxerr, norm(ddH4aa-∇²H4));
 end
 println("maxerr = $maxerr")
 @test maxerr < 1e-5
@@ -164,10 +168,10 @@ for i=1:10
         RHS += fcm.H[i]*u4(0.0)/24
     end
     # Compare
-    maxerr = max( norm(LHS-RHS, Inf), maxerr )
+    global maxerr = max( norm(LHS-RHS, Inf), maxerr )
 end
 println("maxerr = $maxerr")
-@test maxerr < 1e-5
+@test maxerr < 1e-4
 
 println("Convergence of Gcorr (please test this visually!): ")
 println(" nquad |    err    ")
@@ -175,7 +179,8 @@ println("-------|-----------")
 xtest = [ randvec3() for n = 1:10 ]
 Gref = GreenFunctionCorrector(ℂ, fcm, Nquad = 64)
 for nquad in [2, 4, 8, 16, 32]
+   global Gref, xtest
    G = GreenFunctionCorrector(ℂ, fcm, Nquad = nquad)
-   err = maximum( vecnorm(Gref(x) - G(x), Inf)   for x in xtest )
+   err = maximum( norm(Gref(x) - G(x), Inf)   for x in xtest )
    @printf("   %2d  | %.3e \n", nquad, err)
 end

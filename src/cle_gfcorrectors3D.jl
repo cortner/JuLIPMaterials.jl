@@ -1,7 +1,7 @@
 using JuLIPMaterials.CLE: onb3D, euclidean, spherical
 using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43, ForceConstantMatrix1
 
-using Einsum, StaticArrays, ForwardDiff
+using Einsum, StaticArrays, ForwardDiff, LinearAlgebra
 
 export GreenFunctionCorrector
 
@@ -182,7 +182,7 @@ function eval_corrector(x::Vec3{TT}, ℂ::Array{SS,4},FCM::ForceConstantMatrix1{
    ∂H2 = zeros(TT,3,3)
    D²H2 = zeros(TT,3,3,3,3)
    ∂²H2 = zeros(TT,3,3)
-   for ω in range(0.0, pi/Nquad, Nquad)
+   for ω in range(0.0, step=pi/Nquad, length=Nquad)
       z = cos(ω) * x1 + sin(ω) * x2
       D²H2 = _dd_corrector_multiplier(z,ℂ,FCM)
       for i=1:3, j=1:3

@@ -3,13 +3,11 @@
 using JuLIP, JuLIP.Potentials
 using JuLIPMaterials: Vec3
 import JuLIPMaterials
+const CLE = JuLIPMaterials.CLE
 
-MST = JuLIPMaterials
-CLE = MST.CLE
-
-using CLE: grad, onb3D, QSB
-using MST.Testing
-using Einsum
+using JuLIPMaterials.CLE: grad, onb3D, QSB
+using JuLIPMaterials.Testing
+using Einsumm, LinearAlgebra, Printf
 
 println("---------------------------------------------------------------")
 println(" Testing the 3D Anisotropic Dislocation Solution Implementation")
@@ -25,14 +23,14 @@ println("Test basis orientation implemented correctly: ")
 maxerr = 0.0
 # Check vertical
 a = [0.0,0.0,1.0]
-b,c = onb3D(MST.Vec3(a))
+b,c = onb3D(JuLIPMaterials.Vec3(a))
 maxerr = max( maxerr, abs( (a×b)⋅c - 1.0 ) )
 # Check random directions
 for n = 1:10
    a = randvec3()
    a /= norm(a)
-   b,c = onb3D(MST.Vec3(a))
-   maxerr = max( maxerr, abs( (a×b)⋅c - 1.0 ) )
+   b,c = onb3D(JuLIPMaterials.Vec3(a))
+   global maxerr = max( maxerr, abs( (a×b)⋅c - 1.0 ) )
 end
 println("maxerr = $maxerr")
 @test maxerr < 1e-12
@@ -42,7 +40,7 @@ maxerr_1 = 0.0
 maxerr_2 = 0.0
 # Check vertical
 a = [0.0,0.0,1.0]
-b,c = onb3D(MST.Vec3(a))
+b,c = onb3D(JuLIPMaterials.Vec3(a))
 Q,S,B = QSB(Ciso,b,c,30)
 maxerr_1 = max( maxerr_1, vecnorm(4*π*B*Q+S*S + eye(3), Inf) )
 maxerr_2 = max( maxerr_2, vecnorm(Q*S'+S*Q, Inf) )
@@ -50,10 +48,10 @@ maxerr_2 = max( maxerr_2, vecnorm(Q*S'+S*Q, Inf) )
 for n = 1:10
    a = randvec3()
    a /= norm(a)
-   b,c = onb3D(MST.Vec3(a))
+   b,c = onb3D(JuLIPMaterials.Vec3(a))
    Q,S,B = QSB(Ciso,b,c,30)
-   maxerr_1 = max( maxerr_1, vecnorm(4*π*B*Q+S*S + eye(3), Inf) )
-   maxerr_2 = max( maxerr_2, vecnorm(Q*S'+S*Q, Inf) )
+   global maxerr_1 = max( maxerr_1, vecnorm(4*π*B*Q+S*S + eye(3), Inf) )
+   global maxerr_2 = max( maxerr_2, vecnorm(Q*S'+S*Q, Inf) )
 end
 println("maxerr_1 = $maxerr_1")
 println("maxerr_2 = $maxerr_2")
@@ -70,8 +68,8 @@ maxerr = 0.0
 maxerr_g = 0.0
 for n = 1:10
    x = randvec3()
-   maxerr = max( maxerr, vecnorm(u0(x) - uedge(x), Inf) )
-   maxerr_g = max(maxerr_g, vecnorm(grad(u0, x) - grad(uedge, x), Inf) )
+   global maxerr = max( maxerr, vecnorm(u0(x) - uedge(x), Inf) )
+   global maxerr_g = max(maxerr_g, vecnorm(grad(u0, x) - grad(uedge, x), Inf) )
 end
 println("maxerr = $maxerr, maxerr_g = $maxerr_g")
 @test maxerr < 1e-12
@@ -88,8 +86,8 @@ maxerr = 0.0
 maxerr_g = 0.0
 for n = 1:10
    x = randvec3()
-   maxerr = max( maxerr, vecnorm(u0(x) - uscrew(x), Inf) )
-   maxerr_g = max(maxerr_g, vecnorm(grad(u0, x) - grad(uscrew, x), Inf) )
+   global maxerr = max( maxerr, vecnorm(u0(x) - uscrew(x), Inf) )
+   global maxerr_g = max(maxerr_g, vecnorm(grad(u0, x) - grad(uscrew, x), Inf) )
 end
 println("maxerr = $maxerr, maxerr_g = $maxerr_g")
 @test maxerr < 1e-12
@@ -147,7 +145,7 @@ DuTau = zeros(3)
 for ω in range(0.0, pi/n, 2*n)
    x = [cos(ω),sin(ω),0.0]
    tau = [-sin(ω),cos(ω),0.0]
-   I += grad(Disl,x) * tau
+   global I += grad(Disl,x) * tau
 end
 I = I*pi/n
 maxerr = vecnorm(I-[1.0,0.0,0.0])
@@ -165,7 +163,7 @@ DuTau = zeros(3)
 for ω in range(0.0, pi/n, 2*n)
    x = [cos(ω),sin(ω),0.0]
    tau = [-sin(ω),cos(ω),0.0]
-   I += grad(Disl,x) * tau
+   global I += grad(Disl,x) * tau
 end
 I = I*pi/n
 maxerr = vecnorm(I-[0.0,0.0,1.0])
@@ -183,7 +181,7 @@ DuTau = zeros(3)
 for ω in range(0.0, pi/n, 2*n)
    x = [cos(ω),sin(ω),0.0]
    tau = [-sin(ω),cos(ω),0.0]
-   I += grad(Disl,x) * tau
+   global I += grad(Disl,x) * tau
 end
 I = I*pi/n
 maxerr = vecnorm(I-b)

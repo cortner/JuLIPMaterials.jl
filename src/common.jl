@@ -1,5 +1,5 @@
 
-using JuLIP, StaticArrays, NearestNeighbors
+using JuLIP, StaticArrays, NearestNeighbors, LinearAlgebra
 
 import Base: findin, *
 
@@ -84,7 +84,7 @@ function force_constants(calc::AbstractCalculator, at::Atoms{T};
    # convert to dynamical matrix entries
    H = [ - [∂f_∂xi[1][n] ∂f_∂xi[2][n] ∂f_∂xi[3][n]]'  for n = 1:length(cl) ]
    # extract the non-zero entries
-   Inz = setdiff(find( norm.(H) .> 1e-8 ), [1])
+   Inz = setdiff(findall( norm.(H) .> 1e-8 ), [1])
    # . . . and return
    R = [y - x for y in positions(cl)[Inz]]
    return R, H[Inz]

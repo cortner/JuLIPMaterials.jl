@@ -5,7 +5,7 @@
 using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43
 using JuLIPMaterials.CLE: onb3D
 
-using Einsum, StaticArrays
+using Einsum, StaticArrays, LinearAlgebra
 using GaussQuadrature: legendre
 
 export Dislocation, IsoEdgeDislocation3D, IsoScrewDislocation3D
@@ -98,7 +98,7 @@ function QSB(C, m0::Vec3{TT}, n0::Vec3{TT}, Nquad) where TT
    nn, nm, mm = zero(MMat3{TT}), zero(MMat3{TT}), zero(MMat3{TT})
 
 	# Since we integrate a periodic function, use the trapezium rule.
-   for ω in range(0, pi/Nquad, Nquad)
+   for ω in range(0, step=pi/Nquad, length=Nquad)
       m = cos(ω) * m0 + sin(ω) * n0
       n = -sin(ω) * m0 + cos(ω) * n0
       @einsum nn[i,j] = n[α] * C[i,α,j,β] * n[β]

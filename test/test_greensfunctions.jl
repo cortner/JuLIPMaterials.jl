@@ -9,7 +9,7 @@ using JuLIPMaterials.CLE: grad
 using JuLIPMaterials.Testing
 using Einsum
 using GaussQuadrature: legendre
-using LinearAlgebra, ForwardDiff
+using LinearAlgebra, ForwardDiff, Printf, LinearAlgebra
 
 println("------------------------------------------------------------")
 println(" Testing the 3D Anisotropic Green's Function Implementation")
