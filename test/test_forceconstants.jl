@@ -1,8 +1,8 @@
 
-using Base.Test, JuLIP, JuLIPMaterials
+using Test, JuLIP, JuLIPMaterials
 using JuLIPMaterials: ForceConstantMatrix1
 
-datapath = joinpath(Pkg.dir("JuLIP"), "data")
+datapath = joinpath(dirname(pathof(JuLIP)), "..", "data")
 eam_Fe = EAM(datapath * "/pfe.plt",
              datapath * "/ffe.plt",
              datapath * "/F_fe.plt")
@@ -10,7 +10,7 @@ eam_Fe = EAM(datapath * "/pfe.plt",
 # equilibrate a unit cell
 fe1 = bulk(:Fe)
 set_calculator!(fe1, eam_Fe)
-set_constraint!(fe1, VariableCell(fe1))
+variablecell!(fe1)
 minimise!(fe1)
 
 # get the force constants
@@ -18,7 +18,7 @@ fcm = ForceConstantMatrix1(eam_Fe, fe1, h = 1e-5)
 
 println("compute exact hessian on a large cell")
 at = fe1 * 12
-set_constraint!(at, FixedCell(at))
+fixedcell!(at)
 set_calculator!(at, eam_Fe)
 H = JuLIP.hessian_pos(eam_Fe, at)
 Hvec = JuLIP.hessian(at)
@@ -38,7 +38,7 @@ println(@test err_HxU < 1e-7)
 
 println("Check that individual blocks match")
 X = positions(at)
-x̄ = mean(X)
+x̄ = sum(X) / length(X)
 r = [norm(x-x̄) for x in X]
 n0 = find( r .== minimum(r) )[1]
 all_found = true
@@ -54,14 +54,14 @@ for n = 1:length(at)
          if norm(H[n0, n] - fcm.H[m]) < 1e-5
             print("+")
          else
-            all_passed = false
+            global all_passed = false
             print("-")
          end
          break
       end
    end
    if !found
-      all_found = false
+      global all_found = false
       print("x")
    end
 end

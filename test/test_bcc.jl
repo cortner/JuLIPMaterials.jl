@@ -10,7 +10,7 @@ BCC = MST.BCC
 
 morse = Morse(A = 3.5, r0 = rnn("W")) * C2Shift(2.3 * rnn("W"))
 at = bulk("W")
-set_constraint!(at, VariableCell(at))
+variablecell!(at)
 set_calculator!(at, morse)
 
 s = "W"

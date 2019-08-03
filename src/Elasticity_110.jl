@@ -3,7 +3,7 @@
 module Elasticity_110
 
 using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
-         stress, defm, set_defm!
+         stress
 
 using JuLIPMaterials.CLE: elastic_moduli, voigt_moduli
 
@@ -199,7 +199,7 @@ function D_coefficients(p::Array{Complex{Float64},1},D::Array{T,2},
   return D
 end
 
-function sextic_roots(D::Array{T,2}) where {T} 
+function sextic_roots(D::Array{T,2}) where {T}
 
 
   inter = D[1,1]*D[2,2]-2*D[1,2]*D[6,6]-D[1,2]^2

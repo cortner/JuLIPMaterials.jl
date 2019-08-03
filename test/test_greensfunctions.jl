@@ -86,7 +86,7 @@ for (G, id, C) in [(CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
    c, w = legendre(n)
    I = zeros(3,3)
    DGnu = zeros(3,3)
-   for ω in range(0.0, pi/n, 2*n), i=1:n
+   for ω in range(0.0, step=pi/n, length=2*n), i=1:n
       x = [sqrt(1-c[i]^2)*cos(ω),sqrt(1-c[i]^2)*sin(ω),c[i]]
       # TODO: @einsum seems to have changed behaviour or have a bug
       # @einsum DGnu[a,b]  = C[a,β,γ,δ] * CLE.grad(G,x)[b,γ,δ] * x[β]

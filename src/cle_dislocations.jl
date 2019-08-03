@@ -148,7 +148,7 @@ function eval_dislocation(x::AbstractVector{TT}, b, t, cut, C, Nquad=10) where T
 
    # compute Terms 2 and 3 via Legendre quadrature
    Xquad, Wquad = legendre(Float64, 2*Nquad)
-   Xquad = ω * (1.0 + Xquad) / 2.0     # now Xquad ranges from 0.0 to ω
+   Xquad = ω * (1.0 .+ Xquad) / 2.0     # now Xquad ranges from 0.0 to ω
    Wquad = Wquad * (ω / sum(Wquad))
    for (ξ, dξ) in zip(Xquad, Wquad)
       m = cos(ξ) * m0 + sin(ξ) * n0

@@ -3,7 +3,7 @@ module BCC
 
 using ..CLE
 using JuLIP
-using ..Vec3, ..Mat3, ..Ten43, ..cluster
+using JuLIPMaterials: Vec3, Mat3, Ten43, cluster
 
 function lattice_constants_111(sym::Symbol; calc = nothing)
    # See cell_111 for description of outputs
@@ -11,7 +11,7 @@ function lattice_constants_111(sym::Symbol; calc = nothing)
       a0 = rnn(sym)
    else
       at0 = bulk(sym, cubic=true, pbc=true)
-      set_constraint!(at0, VariableCell(at0))
+      variablecell!(at0)
       set_calculator!(at0, calc)
       minimise!(at0, verbose=0)
       a0 = sqrt(3)/2 * cell(at0)[1,1]

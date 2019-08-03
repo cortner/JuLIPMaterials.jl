@@ -7,7 +7,7 @@ const CLE = JuLIPMaterials.CLE
 
 using JuLIPMaterials.CLE: grad, onb3D, QSB
 using JuLIPMaterials.Testing
-using Einsumm, LinearAlgebra, Printf
+using Einsum, LinearAlgebra, Printf, ForwardDiff
 
 println("---------------------------------------------------------------")
 println(" Testing the 3D Anisotropic Dislocation Solution Implementation")
@@ -42,16 +42,16 @@ maxerr_2 = 0.0
 a = [0.0,0.0,1.0]
 b,c = onb3D(JuLIPMaterials.Vec3(a))
 Q,S,B = QSB(Ciso,b,c,30)
-maxerr_1 = max( maxerr_1, vecnorm(4*π*B*Q+S*S + eye(3), Inf) )
-maxerr_2 = max( maxerr_2, vecnorm(Q*S'+S*Q, Inf) )
+maxerr_1 = max( maxerr_1, norm(4*π*B*Q+S*S + eye(3), Inf) )
+maxerr_2 = max( maxerr_2, norm(Q*S'+S*Q, Inf) )
 # Check random directions
 for n = 1:10
    a = randvec3()
    a /= norm(a)
    b,c = onb3D(JuLIPMaterials.Vec3(a))
    Q,S,B = QSB(Ciso,b,c,30)
-   global maxerr_1 = max( maxerr_1, vecnorm(4*π*B*Q+S*S + eye(3), Inf) )
-   global maxerr_2 = max( maxerr_2, vecnorm(Q*S'+S*Q, Inf) )
+   global maxerr_1 = max( maxerr_1, norm(4*π*B*Q+S*S + I, Inf) )
+   global maxerr_2 = max( maxerr_2, norm(Q*S'+S*Q, Inf) )
 end
 println("maxerr_1 = $maxerr_1")
 println("maxerr_2 = $maxerr_2")
@@ -68,8 +68,8 @@ maxerr = 0.0
 maxerr_g = 0.0
 for n = 1:10
    x = randvec3()
-   global maxerr = max( maxerr, vecnorm(u0(x) - uedge(x), Inf) )
-   global maxerr_g = max(maxerr_g, vecnorm(grad(u0, x) - grad(uedge, x), Inf) )
+   global maxerr = max( maxerr, norm(u0(x) - uedge(x), Inf) )
+   global maxerr_g = max(maxerr_g, norm(grad(u0, x) - grad(uedge, x), Inf) )
 end
 println("maxerr = $maxerr, maxerr_g = $maxerr_g")
 @test maxerr < 1e-12
@@ -86,8 +86,8 @@ maxerr = 0.0
 maxerr_g = 0.0
 for n = 1:10
    x = randvec3()
-   global maxerr = max( maxerr, vecnorm(u0(x) - uscrew(x), Inf) )
-   global maxerr_g = max(maxerr_g, vecnorm(grad(u0, x) - grad(uscrew, x), Inf) )
+   global maxerr = max( maxerr, norm(u0(x) - uscrew(x), Inf) )
+   global maxerr_g = max(maxerr_g, norm(grad(u0, x) - grad(uscrew, x), Inf) )
 end
 println("maxerr = $maxerr, maxerr_g = $maxerr_g")
 @test maxerr < 1e-12
@@ -113,7 +113,7 @@ for (Disl, id, C) in [ (CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocati
       u = x_ -> Disl(x_)
       ∂u = x_ -> grad(Disl, x_) * a
       ∂uad = x_ -> ForwardDiff.jacobian(Disl, x_) * a
-      maxerr = max( maxerr, vecnorm(∂u(x) - ∂uad(x), Inf) )
+      maxerr = max( maxerr, norm(∂u(x) - ∂uad(x), Inf) )
    end
    println("maxerr = $maxerr")
    @test maxerr < 1e-12
@@ -128,10 +128,10 @@ for (Disl, id, C) in [(CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocatio
    for n = 1:10
       x = Vec3(randvec3())
       u = x_ -> Disl(x_)
-      maxerr = max( vecnorm(cleforce(x, u, C), Inf), maxerr )
+      maxerr = max( norm(cleforce(x, u, C), Inf), maxerr )
    end
    println("maxerr = $maxerr")
-   @test maxerr < 1e-11
+   @test maxerr < 1e-10
 end
 
 # Test Burgers vector for edge dislocation implementation
@@ -140,15 +140,15 @@ println("u = IsoEdgeDislocation3D: test Burgers vector: ")
 err = 0.0
 # Integrate around loop
 n = 30;
-I = zeros(3)
+II = zeros(3)
 DuTau = zeros(3)
-for ω in range(0.0, pi/n, 2*n)
+for ω in range(0.0, step=pi/n, length=2*n)
    x = [cos(ω),sin(ω),0.0]
    tau = [-sin(ω),cos(ω),0.0]
-   global I += grad(Disl,x) * tau
+   global II += grad(Disl,x) * tau
 end
-I = I*pi/n
-maxerr = vecnorm(I-[1.0,0.0,0.0])
+II = II*pi/n
+maxerr = norm(II-[1.0,0.0,0.0])
 println("maxerr = $maxerr")
 @test maxerr < 1e-12
 
@@ -158,15 +158,15 @@ println("u = IsoScrewDislocation3D: test Burgers vector: ")
 err = 0.0
 # Integrate around loop
 n = 30;
-I = zeros(3)
+II = zeros(3)
 DuTau = zeros(3)
-for ω in range(0.0, pi/n, 2*n)
+for ω in range(0.0, step=pi/n, length=2*n)
    x = [cos(ω),sin(ω),0.0]
    tau = [-sin(ω),cos(ω),0.0]
-   global I += grad(Disl,x) * tau
+   global II += grad(Disl,x) * tau
 end
-I = I*pi/n
-maxerr = vecnorm(I-[0.0,0.0,1.0])
+II = II*pi/n
+maxerr = norm(II-[0.0,0.0,1.0])
 println("maxerr = $maxerr")
 @test maxerr < 1e-12
 
@@ -176,15 +176,15 @@ println("u = Dislocation(30): test Burgers vector: ")
 err = 0.0
 # Integrate around loop
 n = 30;
-I = zeros(3)
+II = zeros(3)
 DuTau = zeros(3)
-for ω in range(0.0, pi/n, 2*n)
+for ω in range(0.0, step=pi/n, length=2*n)
    x = [cos(ω),sin(ω),0.0]
    tau = [-sin(ω),cos(ω),0.0]
-   global I += grad(Disl,x) * tau
+   global II += grad(Disl,x) * tau
 end
-I = I*pi/n
-maxerr = vecnorm(I-b)
+II = II*pi/n
+maxerr = norm(II-b)
 println("maxerr = $maxerr")
 @test maxerr < 1e-12
 
@@ -197,7 +197,7 @@ xtest = [ randvec3() for n = 1:10 ]
 u0 = CLE.Dislocation(b,t,C, Nquad = 40)
 for nquad in [2, 4, 6, 8, 10, 12, 14]
    u = CLE.Dislocation(b,t,C, Nquad = nquad)
-   err = maximum( vecnorm(u0(x) - u(x), Inf)   for x in xtest )
-   err_g = maximum( vecnorm(grad(u0, x) - grad(u, x), Inf)   for x in xtest )
+   err = maximum( norm(u0(x) - u(x), Inf)   for x in xtest )
+   err_g = maximum( norm(grad(u0, x) - grad(u, x), Inf)   for x in xtest )
    @printf("   %2d  | %.3e | %.3e  \n", nquad, err, err_g)
 end

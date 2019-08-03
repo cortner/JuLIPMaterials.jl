@@ -199,7 +199,7 @@ function edge110(species::AbstractString, R::Real;
    if a == :equilibrate
        atu = bulk(species, cubic=true, pbc=true)
        set_calculator!(atu, calc)
-       set_constraint!(atu, VariableCell(atu))
+       variablecell!(atu)
        minimise!(atu)
        a = defm(atu)[1,1]
    end

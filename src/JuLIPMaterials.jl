@@ -6,17 +6,17 @@ include("CLE.jl")
 
 include("LGF.jl")
 
-include("CauchyBorn.jl")
-
 include("FCC.jl")
 
 include("BCC.jl")
 
-include("PoleExpansion.jl") 
-
-# include("Si.jl")
+include("PoleExpansion.jl")
 
 include("Testing.jl")
+
+# include("CauchyBorn.jl")
+
+# include("Si.jl")
 
 # include("TriangularLattice.jl")
 

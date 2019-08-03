@@ -5,11 +5,10 @@ Implements the lattice Green's function
 module LGFs
 
 using JuLIP, NeighbourLists
+using JuLIP: AbstractAtoms, AbstractCalculator
 using JuLIPMaterials.CLE
 using JuLIPMaterials: ee, Vec3, Mat3, ForceConstantMatrix1
 using JuLIPMaterials.CLE: GreenFunction3D
-
-using JuLIP.Potentials: hess
 
 import Base.length
 
@@ -24,10 +23,10 @@ import Base.length
 * `R` : non-zero lattice vectors, in interaction range
 * `H` : hessian blocks
 """
-struct LGF1{T <: AbstractFloat, TI}
+struct LGF1{T, TI}
    DM::ForceConstantMatrix1{T}
    Gc::GreenFunction3D{T}
-   at::Atoms{T, TI}      # only used to compute geometry information
+   at::Atoms{T}      # only used to compute geometry information
 end
 
 length(G::LGF1) = length(G.R)

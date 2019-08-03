@@ -2,7 +2,7 @@
 module CLE
 
 using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
-             stress, defm, set_defm!
+             stress, cell, set_cell!, apply_defm!
 
 using StaticArrays, Einsum
 
@@ -45,16 +45,16 @@ on the stress. The error should be in the range 1e-10
 elastic_moduli(at::AbstractAtoms) = elastic_moduli(calculator(at), at)
 
 function elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms)
-   F0 = defm(at) |> Matrix
+   F0 = cell(at)' |> Matrix
    Ih = Matrix(1.0*I, 3,3)
    h = eps()^(1/3)
    C = zeros(3,3,3,3)
    for i = 1:3, a = 1:3
       Ih[i,a] += h
-      set_defm!(at, Ih * F0, updatepositions=true)
+      apply_defm!(at, Ih)
       Sp = stress(calc, at)
       Ih[i,a] -= 2*h
-      set_defm!(at, Ih * F0, updatepositions=true)
+      apply_defm!(at, inv(Ih))
       Sm = stress(calc, at)
       C[i, a, :, :] = (Sp - Sm) / (2*h)
       Ih[i,a] += h

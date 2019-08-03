@@ -1,5 +1,6 @@
 
 using JuLIP, StaticArrays, NearestNeighbors, LinearAlgebra
+using JuLIP: AbstractAtoms, AbstractCalculator
 
 import Base: findin, *
 

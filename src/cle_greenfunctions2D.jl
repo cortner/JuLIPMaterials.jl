@@ -66,7 +66,7 @@ function eval_green(x::Vec2{TT}, ℂ::Ten42, Nquad::Int) where TT
       Nquad += 1
    end
    # Integrate
-   for ω in range(0.0, pi/Nquad, Nquad)
+   for ω in range(0.0, step=pi/Nquad, length=Nquad)
       z = cos(ω) * x̂ + sin(ω) * x⟂
       @einsum zz[i,j] = z[α] * ℂ[i,α,j,β] * z[β]
       # Perform integration

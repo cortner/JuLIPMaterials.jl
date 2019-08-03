@@ -16,7 +16,7 @@ at = bulk(:Cu)
 r0 = rnn(:Cu)
 lj = lennardjones(r0=r0, rcut=[1.3*r0, 1.7*r0])
 set_calculator!(at, lj)
-set_constraint!(at, VariableCell(at))
+variablecell!(at)
 minimise!(at)
 # Get force constants
 fcm = ForceConstantMatrix1(lj, at, h = 1e-5)
