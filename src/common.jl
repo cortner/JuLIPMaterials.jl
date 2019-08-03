@@ -23,7 +23,7 @@ const MMat3{T} = MMatrix{3,3,T}
 const MTen33{T} = MArray{Tuple{3,3,3},T,3,27}
 const MTen43{T} = MArray{NTuple{4,3},T,4,81}
 
-const _EE = @SMatrix eye(3)
+const _EE = Mat3{Float64}([1 0 0; 0 1 0; 0 0 1])
 ee(i::Integer) = _EE[:,i]
 
 
@@ -90,7 +90,7 @@ function force_constants(calc::AbstractCalculator, at::Atoms{T};
    return R, H[Inz]
 end
 
-force_constants{T}(calc::PairPotential, at::Atoms{T}) =
+force_constants(calc::PairPotential, at::Atoms{T}) where {T} =
       force_constants(SitePotential(calc), at)
 
 

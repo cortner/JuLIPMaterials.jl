@@ -44,8 +44,7 @@ Or, simply pass in a scalar `normalise = v0`.
 * `div_grad(W,F)` : finite-difference implementation of div ∂W(F)
 """
 function Wcb(at::AbstractAtoms, calc::AbstractCalculator;
-             normalise=:volume, kwargs...)
-   const T = Float64
+             normalise=:volume, T = Float64, kwargs...)  # switch to AbstractAtoms{T}
    @assert length(at) == 1
    set_calculator!(at, calc)
    # compute the normalisation factor; volume or what?

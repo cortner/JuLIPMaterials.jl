@@ -51,7 +51,8 @@ function _autocut_(b::Vec3, t::Vec3)
 	return Vec3(cut)
 end
 
-Dislocation{T}(b::Array{T,1},t::Array{T,1},C::Array{T, 4}; kwargs...) = Dislocation(Vec3{T}(b),Vec3{T}(t),Ten43{T}(C); kwargs...)
+Dislocation(b::Array{T,1},t::Array{T,1},C::Array{T, 4}; kwargs...) where {T} =
+		Dislocation(Vec3{T}(b),Vec3{T}(t),Ten43{T}(C); kwargs...)
 
 function (Disl::Dislocation3D{T})(x) where T
    if Disl.remove_singularity && norm(x) < 1e-10
@@ -224,8 +225,8 @@ function eval_isoedge(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
 	if θ < 0
 		θ += 2π
 	end
-   u[1] = b/(2*π) * (θ + (x[1].*x[2])./(2*(1-ν) * r²))
-   u[2] = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log.(r²) - 2*x[2].^2 ./(4*(1-ν)*r²))
+   u[1] = b/(2*π) * (θ + (x[1]*x[2])/(2*(1-ν) * r²))
+   u[2] = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log(r²) - 2*x[2]^2 /(4*(1-ν)*r²))
    return Vec3(u)
 end
 
@@ -236,10 +237,10 @@ function grad_isoedge(x::Vec3{T}, b::Real, λ::Real, μ::Real) where T
    ν = λ/(2*(λ+μ))
    r² = dot(x[1:2],x[1:2])
    r⁴ = (r²).^2
-   Du[1,1] = b/(2*π) * ( (2*ν-1)/(2*(1-ν)) * x[2] / r² -  x[1].^2.*x[2]./((1-ν)*r⁴))
-   Du[1,2] = b/(2*π) * ( (3-2*ν)/(2*(1-ν)) * x[1] / r² -  x[1].*x[2].^2./((1-ν)*r⁴))
-   Du[2,1] = -b/(2*π) * ( x[1]/r² + (x[1]*(x[2].^2-x[1].^2))/(2*(1-ν)*r⁴))
-   Du[2,2] = b/(2*π) * ( ν*x[2]/((1-ν)*r²) + (x[2]*(x[1].^2-x[2].^2))/(2*(1-ν)*r⁴))
+   Du[1,1] = b/(2*π) * ( (2*ν-1)/(2*(1-ν)) * x[2] / r² -  x[1]^2 * x[2] / ((1-ν)*r⁴))
+   Du[1,2] = b/(2*π) * ( (3-2*ν)/(2*(1-ν)) * x[1] / r² -  x[1]*x[2]^2 / ((1-ν)*r⁴))
+   Du[2,1] = -b/(2*π) * ( x[1]/r² + (x[1]*(x[2].^2-x[1]^2))/(2*(1-ν)*r⁴))
+   Du[2,2] = b/(2*π) * ( ν*x[2]/((1-ν)*r²) + (x[2]*(x[1]^2-x[2]^2))/(2*(1-ν)*r⁴))
    return Mat3(Du)
 end
 

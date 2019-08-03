@@ -30,7 +30,8 @@ function GreenFunction(C::Ten43; Nquad = nothing, remove_singularity = true)
 end
 
 
-GreenFunction{T}(C::Array{T, 4}; kwargs...) = GreenFunction(Ten43{T}(C); kwargs...)
+GreenFunction(C::Array{T, 4}; kwargs...) where {T} =
+      GreenFunction(Ten43{T}(C); kwargs...)
 
 
 GreenFunction(at::AbstractAtoms; kwargs...) =

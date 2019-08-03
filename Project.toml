@@ -3,16 +3,19 @@ uuid = "37d5470d-be39-5372-83c6-3e18ddf26f4a"
 version = "0.1.0"
 
 [deps]
+Calculus = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
 Einsum = "b7d42ee7-0b51-5a75-98ca-779d3107e4c0"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 GaussQuadrature = "d54b0c1a-921d-58e0-8e36-89d8069c0969"
 JuLIP = "945c410c-986d-556a-acb1-167a618e0462"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
+NeighbourLists = "2fcf5ba9-9ed4-57cf-b73f-ff513e316b9c"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-julia = "1"
-JuLIP = "0.8"
+JuLIP = "0.7"
+julia = "0.7, 1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

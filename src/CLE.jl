@@ -22,7 +22,7 @@ spherical(x) = angle(x[1], x[2]), angle(norm(x[1:2]), x[3])
 euclidean(φ, ψ) = Vec3(cos(ψ) * cos(φ), cos(ψ) * sin(φ), sin(ψ))
 
 "given a vector x ∈ ℝ³, return `z0, z1` where `(x/norm(x),z0,z1)` form a right--handed ONB."
-function onb3D{T}(x::Vec3{T})
+function onb3D(x::Vec3{T}) where {T}
    x /= norm(x)
    φ, ψ = spherical(x)
    return Vec3{T}( sin(ψ)*cos(φ), sin(ψ)*sin(φ), -cos(ψ) ),
@@ -95,10 +95,10 @@ voigt_moduli(calc::AbstractCalculator, at::AbstractAtoms) =
 
 const voigtinds = [1, 5, 9, 4, 7, 8]
 
-voigt_moduli{T}(C::Array{T,4}) = reshape(C, 9, 9)[voigtinds, voigtinds]
+voigt_moduli(C::Array{T,4}) where {T} = reshape(C, 9, 9)[voigtinds, voigtinds]
 
 
-function elastic_moduli{T}(Cv::AbstractMatrix{T})
+function elastic_moduli(Cv::AbstractMatrix{T}) where {T}
    @assert size(Cv) == (6,6)
    C = zeros(T, 9,9)
    C[voigtinds, voigtinds] = Cv

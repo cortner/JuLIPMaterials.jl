@@ -22,7 +22,7 @@ for n = 1:10
    x = randvec3(1.0, 1.0)
    maxerr = max(maxerr, norm(x - CLE.euclidean(CLE.spherical(x)...)))
 end
-@test maxerr < 1e-14
+println(@test maxerr < 1e-14)
 println("maxerr = $maxerr")
 
 
@@ -40,8 +40,8 @@ for n = 1:10
    maxerr_g = max(maxerr_g, vecnorm(grad(G, x) - grad(Giso, x), Inf) )
 end
 println("maxerr = $maxerr, maxerr_g = $maxerr_g")
-@test maxerr < 1e-12
-@test maxerr_g < 1e-12
+println(@test maxerr < 1e-12)
+println(@test maxerr_g < 1e-12)
 
 Crand = randmoduli()
 
@@ -59,7 +59,7 @@ for (G, id, C) in [ (CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
       maxerr = max( maxerr, vecnorm(∂u(x) - ∂uad(x), Inf) )
    end
    println("maxerr = $maxerr")
-   @test maxerr < 1e-12
+   println(@test maxerr < 1e-12)
 end
 
 for (G, id, C) in [
@@ -73,7 +73,7 @@ for (G, id, C) in [
       maxerr = max( vecnorm(cleforce(Vec3(x), u, C), Inf), maxerr )
    end
    println("maxerr = $maxerr")
-   @test maxerr < 1e-10
+   println(@test maxerr < 1e-10)
 end
 
 for (G, id, C) in [(CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
@@ -100,7 +100,7 @@ for (G, id, C) in [(CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
    I = I*pi/n
    maxerr = norm(I-eye(3))
    println("maxerr = $maxerr")
-   @test maxerr < 1e-12
+   println(@test maxerr < 1e-12)
 end
 
 

@@ -65,7 +65,7 @@ end
 
 
 
-function little_a{T}(D::Array{T,2},r,s)
+function little_a(D::Array{T,2},r,s) where {T}
 
    C = zeros(3,3,3,3)
    Chat = zeros(3,3,3,3)
@@ -102,8 +102,9 @@ end
 
 
 
-function fourth_order_basis{T}(D::Array{T,2},a;
-            Tr = [1/sqrt(2) -1/sqrt(2) 0; 0 0 1; 1/sqrt(2) 1/sqrt(2) 0])
+function fourth_order_basis(D::Array{T,2},a;
+            Tr = [1/sqrt(2) -1/sqrt(2) 0; 0 0 1; 1/sqrt(2) 1/sqrt(2) 0]
+				) where {T}
    C = zeros(3,3,3,3)
    Chat = zeros(3,3,3,3)
 
@@ -137,7 +138,7 @@ function fourth_order_basis{T}(D::Array{T,2},a;
 end
 
 
-function A_coefficients{T}(p::Array{Complex{Float64},1},D::Array{T,2})
+function A_coefficients(p::Array{Complex{Float64},1},D::Array{T,2}) where {T}
 
   A = Complex{Float64}[0 0 0; 0 0 0; 0 0 0]
   x = Complex{Float64}[0; 0 ; 0]
@@ -163,7 +164,8 @@ function A_coefficients{T}(p::Array{Complex{Float64},1},D::Array{T,2})
 end
 
 
-function D_coefficients{T}(p::Array{Complex{Float64},1},D::Array{T,2}, A::Array{Complex{Float64},2}, b)
+function D_coefficients(p::Array{Complex{Float64},1},D::Array{T,2},
+						      A::Array{Complex{Float64},2}, b) where {T}
 
   alpha = zeros(6,6)
   v = zeros(6,1)
@@ -197,7 +199,7 @@ function D_coefficients{T}(p::Array{Complex{Float64},1},D::Array{T,2}, A::Array{
   return D
 end
 
-function sextic_roots{T}(D::Array{T,2})
+function sextic_roots(D::Array{T,2}) where {T} 
 
 
   inter = D[1,1]*D[2,2]-2*D[1,2]*D[6,6]-D[1,2]^2

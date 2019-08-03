@@ -14,7 +14,7 @@ using JuLIP.Potentials: fcut, fcut_d
 
 
 
-u_edge_fcc_110{T}(x, y, b, C::Array{T,4}; TOL=1e-4) =
+u_edge_fcc_110(x, y, b, C::Array{T,4}; TOL=1e-4) where {T} =
          u_edge(x, y, b, voigt_moduli(C), TOL=TOL)
 
 """
@@ -26,7 +26,7 @@ This function computes the anisotropic CLE solution for an in-plane
 edge dislocation. The elastic moduli are taken to within `TOL` accuracy (
    this is a keyword argument)
 """
-function u_edge_fcc_110{T}(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4)
+function u_edge_fcc_110(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4) where {T}
    Cv = copy(Cv)
    test1 = Cv[1,1]
    test2 = Cv[1,2]
@@ -88,7 +88,7 @@ end
 
 
 
-type EdgeCubic{T1,T2,T3,T4,T5}
+mutable struct EdgeCubic{T1,T2,T3,T4,T5}
     A::Matrix{T1}
     D::Vector{T2}
     p::Vector{T3}
@@ -96,7 +96,7 @@ type EdgeCubic{T1,T2,T3,T4,T5}
     b::T5
 end
 
-function EdgeCubic{T}(b::Real, Cv::Array{T,2}, a::Real; x0 = zeros(3))
+function EdgeCubic(b::Real, Cv::Array{T,2}, a::Real; x0 = zeros(3)) where {T}
     # clean up the tensor
    test1 = Cv[1,1]
    test2 = Cv[1,2]
