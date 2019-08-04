@@ -137,7 +137,7 @@ grad_p(W::Wcb2, F, p) = - forces( set_F_and_p!(W, F, p) )[2]
 # grad_F(W::Wcb2, F, p) = 0  # TODO
 
 function dpdpWcb(W::Wcb2{T}) where T
-   J = Calculus.jacobian(p -> grad_p(W, eye(3), p))
+   J = Calculus.jacobian(p -> grad_p(W, one(SMatrix{3,3,T}), p))
    dpdpW = J(W.p1)
    return Mat3{T}(0.5 * (dpdpW + dpdpW'))
 end

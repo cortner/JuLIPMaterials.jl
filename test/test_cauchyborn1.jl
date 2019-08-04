@@ -2,11 +2,14 @@
 using Base.Test
 using JuLIP, ForwardDiff
 using JuLIPMaterials
+using StaticArrays
 
 MST = JuLIPMaterials
 CB = MST.CauchyBorn
 CLE = MST.CLE
 FD = ForwardDiff
+
+Id = one(SMatrix{3,3,Float64})
 
 println("------------------------------------------------------------")
 println(" Testing Simple Lattice Cauchy--Born Implementation")
@@ -23,11 +26,11 @@ W = CB.Wcb(at, calc)
 
 println("generate a cauchy Born potential . . . ")
 println("check W, grad(W..) evaluate ok . . .")
-@test W(eye(3)) == energy(at) / det(defm(at))
-@test CB.grad(W, eye(3)) isa AbstractMatrix
+@test W(Id) == energy(at) / det(defm(at))
+@test CB.grad(W, Id) isa AbstractMatrix
 
 println("Finite-difference consistency test")
-F = eye(3) + (rand(3,3) - 0.5) * 0.01
+F = Id + (rand(3,3) - 0.5) * 0.01
 W0 = W(F)
 dW0 = CB.grad(W, F)[:]
 errors = []
@@ -64,15 +67,15 @@ println("Constructing Wcb . . .")
 W = CB.Wcb(atu, calc, normalise = :atoms)
 
 energy(atu)
-W(eye(3))
+W(Id)
 
-@test CB.grad(W, eye(3)) ≈ -virial(atu)
-@test stress(atu) == CB.grad(W, eye(3)) / det(cell(atu))
+@test CB.grad(W, Id) ≈ -virial(atu)
+@test stress(atu) == CB.grad(W, Id) / det(cell(atu))
 
 at1 = deepcopy(atu)
 F0 = defm(at1)
 for n = 1:5
-   F = eye(3) + 0.1 * rand(3,3)
+   F = Id + 0.1 * rand(3,3)
    set_defm!(at1, F * F0)
    @test energy(calc, at1) == W(F)
 end

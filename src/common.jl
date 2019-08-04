@@ -50,7 +50,7 @@ function *(fcm::ForceConstantMatrix1{T}, t::Tuple{<:Atoms, Vector{<: Vec3}}) whe
    rcut = maximum(norm.(fcm.R)) * 1.01
    # WARNING: this is an extremely naive implementation which needs to be fixed
    #          as soon as possible
-   for (i, j, _, R) in sites(at, rcut)
+   for (i, j, R) in sites(at, rcut)
       for n = 1:length(R)
          for m = 1:length(fcm.R)
             if norm(R[n] - fcm.R[m]) < 1e-7
@@ -69,7 +69,7 @@ ForceConstantMatrix1(calc::AbstractCalculator, at::AbstractAtoms; kwargs...) =
 
 function force_constants(calc::AbstractCalculator, at::Atoms{T};
                          h = 1e-5, rcut = 2.01*cutoff(calc) + 1
-                         ) where T <: AbstractFloat
+                         ) where {T}
    @assert length(at) == 1 # assume no basis
    cl = cluster(at, rcut)
    set_calculator!(cl, calc)
@@ -91,9 +91,6 @@ function force_constants(calc::AbstractCalculator, at::Atoms{T};
    R = Vec3{T}[y - x for y in positions(cl)[Inz]]
    return R, H[Inz]
 end
-
-force_constants(calc::PairPotential, at::Atoms{T}) where {T} =
-      force_constants(SitePotential(calc), at)
 
 
 """

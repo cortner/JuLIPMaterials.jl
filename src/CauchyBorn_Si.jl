@@ -94,7 +94,7 @@ end
 
 function elastic_moduli(W::WcbQuad)
    F0 = W.F0 |> Matrix
-   Ih = eye(3)
+   Ih = Matrix(1.0*I, 3,3) # eye(3)
    h = eps()^(1/3)
    C = zeros(3,3,3,3)
    for i = 1:3, a = 1:3

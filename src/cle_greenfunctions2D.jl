@@ -102,7 +102,7 @@ end
 
 "isotropic CLE Green's function"
 function eval_greeniso(x::Vec2{T}, λ::Real, μ::Real) where T
-   Id = @SMatrix eye(T, 2)
+   Id = one(SMatrix{2,2,T})
    return ( (λ+μ) * ( x*x'/dot(x,x)- 0.5 * Id ) -
             (λ+3*μ) * log(norm(x)) ) / (4.0*π*μ * (λ+2*μ))
 end

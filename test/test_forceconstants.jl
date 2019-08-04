@@ -40,7 +40,7 @@ println("Check that individual blocks match")
 X = positions(at)
 x̄ = sum(X) / length(X)
 r = [norm(x-x̄) for x in X]
-n0 = find( r .== minimum(r) )[1]
+n0 = findall( r .== minimum(r) )[1]
 all_found = true
 all_passed = true
 for n = 1:length(at)

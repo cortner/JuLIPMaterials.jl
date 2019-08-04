@@ -32,8 +32,8 @@ for n = 1:10
    b,c = onb3D(JuLIPMaterials.Vec3(a))
    global maxerr = max( maxerr, abs( (a×b)⋅c - 1.0 ) )
 end
-println("maxerr = $maxerr")
-@test maxerr < 1e-12
+print("maxerr = $maxerr: ")
+println(@test maxerr < 1e-12)
 
 println("Test implementation of Q,S,B matrices using BBS formulae (3.6.20-21): ")
 maxerr_1 = 0.0
@@ -42,7 +42,7 @@ maxerr_2 = 0.0
 a = [0.0,0.0,1.0]
 b,c = onb3D(JuLIPMaterials.Vec3(a))
 Q,S,B = QSB(Ciso,b,c,30)
-maxerr_1 = max( maxerr_1, norm(4*π*B*Q+S*S + eye(3), Inf) )
+maxerr_1 = max( maxerr_1, norm(4*π*B*Q+S*S + I, Inf) )
 maxerr_2 = max( maxerr_2, norm(Q*S'+S*Q, Inf) )
 # Check random directions
 for n = 1:10
@@ -53,10 +53,10 @@ for n = 1:10
    global maxerr_1 = max( maxerr_1, norm(4*π*B*Q+S*S + I, Inf) )
    global maxerr_2 = max( maxerr_2, norm(Q*S'+S*Q, Inf) )
 end
-println("maxerr_1 = $maxerr_1")
+print("maxerr_1 = $maxerr_1: ")
+println(@test maxerr_1 < 1e-12)
 println("maxerr_2 = $maxerr_2")
-@test maxerr_1 < 1e-12
-@test maxerr_2 < 1e-12
+println(@test maxerr_2 < 1e-12)
 
 # Test explicit edge formula vs anistropic one
 println("Test agreement between anisotopic and isotropic edge dislocation: ")
@@ -71,9 +71,9 @@ for n = 1:10
    global maxerr = max( maxerr, norm(u0(x) - uedge(x), Inf) )
    global maxerr_g = max(maxerr_g, norm(grad(u0, x) - grad(uedge, x), Inf) )
 end
-println("maxerr = $maxerr, maxerr_g = $maxerr_g")
-@test maxerr < 1e-12
-@test maxerr_g < 1e-12
+print("maxerr = $maxerr, maxerr_g = $maxerr_g: ")
+print(@test maxerr < 1e-12)
+println(@test maxerr_g < 1e-12)
 
 # Test explicit screw formula vs anistropic one
 println("Test agreement between anisotopic and isotropic screw dislocation: ")
@@ -89,9 +89,9 @@ for n = 1:10
    global maxerr = max( maxerr, norm(u0(x) - uscrew(x), Inf) )
    global maxerr_g = max(maxerr_g, norm(grad(u0, x) - grad(uscrew, x), Inf) )
 end
-println("maxerr = $maxerr, maxerr_g = $maxerr_g")
-@test maxerr < 1e-12
-@test maxerr_g < 1e-12
+print("maxerr = $maxerr, maxerr_g = $maxerr_g: ")
+print(@test maxerr < 1e-12)
+println(@test maxerr_g < 1e-12)
 
 
 # Generate random elastic moduli
@@ -115,8 +115,8 @@ for (Disl, id, C) in [ (CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocati
       ∂uad = x_ -> ForwardDiff.jacobian(Disl, x_) * a
       maxerr = max( maxerr, norm(∂u(x) - ∂uad(x), Inf) )
    end
-   println("maxerr = $maxerr")
-   @test maxerr < 1e-12
+   print("maxerr = $maxerr: ")
+   println(@test maxerr < 1e-12)
 end
 
 # Test PDE is solved in all implementations
@@ -130,8 +130,8 @@ for (Disl, id, C) in [(CLE.IsoEdgeDislocation3D(λ, μ, 1.0), "IsoEdgeDislocatio
       u = x_ -> Disl(x_)
       maxerr = max( norm(cleforce(x, u, C), Inf), maxerr )
    end
-   println("maxerr = $maxerr")
-   @test maxerr < 1e-10
+   print("maxerr = $maxerr: ")
+   println(@test maxerr < 1e-10)
 end
 
 # Test Burgers vector for edge dislocation implementation
@@ -149,8 +149,8 @@ for ω in range(0.0, step=pi/n, length=2*n)
 end
 II = II*pi/n
 maxerr = norm(II-[1.0,0.0,0.0])
-println("maxerr = $maxerr")
-@test maxerr < 1e-12
+print("maxerr = $maxerr: ")
+println(@test maxerr < 1e-12)
 
 # Test Burgers vector for screw dislocation implementation
 Disl = CLE.IsoScrewDislocation3D(1.0)
@@ -167,8 +167,8 @@ for ω in range(0.0, step=pi/n, length=2*n)
 end
 II = II*pi/n
 maxerr = norm(II-[0.0,0.0,1.0])
-println("maxerr = $maxerr")
-@test maxerr < 1e-12
+print("maxerr = $maxerr: ")
+println(@test maxerr < 1e-12)
 
 # Test Burgers vector for arbitrary anisotropic implementation
 Disl = CLE.Dislocation(b,[0.0,0.0,1.0],Crand, Nquad = 30)
@@ -185,8 +185,8 @@ for ω in range(0.0, step=pi/n, length=2*n)
 end
 II = II*pi/n
 maxerr = norm(II-b)
-println("maxerr = $maxerr")
-@test maxerr < 1e-12
+print("maxerr = $maxerr: ")
+println(@test maxerr < 1e-12)
 
 # Test convergence with increasing quadrature points
 println("Convergence of u with random C (please test this visually!): ")
