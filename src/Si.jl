@@ -79,10 +79,10 @@ function sw_eq()
 end
 
 
-function si110_cluster(species, R; kwargs...)
-    @assert isodd(R)   # TODO: why?
+function si110_cluster(species, L; kwargs...)
+    # @assert isodd(L)   # TODO: why?
     atu, b, _, a = si110_plane(species; kwargs...)
-    at = atu * (R, R, 1)
+    at = atu * (L, L, 1)
     set_pbc!(at, (false, false, true))
     b = b[1]
     X = positions(at)
@@ -205,7 +205,8 @@ function edge110(species::Symbol, R::Real;
    end
 
    # setup undeformed geometry
-   at, b, x0 = si110_cluster(species, R; a = a)
+   L = 6 * ceil(Int, 0.5 * R/a) + 1
+   at, b, x0 = si110_cluster(species, L; a = a)
    set_calculator!(at, calc)
 
 
@@ -235,6 +236,17 @@ function edge110(species::Symbol, R::Real;
       set_positions!(at, X)
    else
       error("edge110: unknown parameters sym = $(sym)")
+   end
+
+   if truncate
+      X = positions(at)
+      C = cell(at)
+      p  = pbc(at)
+      Ikeep = findall( [ norm(x[1:2] - x0[1:2]) for x in X ] .<= R )
+      X = X[Ikeep]
+      at = Atoms(:Si, X)
+      set_cell!(at, C)
+      set_pbc!(at, p)
    end
 
    return at, x0
