@@ -1,13 +1,13 @@
 
 
-using JuLIP, JuLIP.Potentials
+using JuLIP, JuLIP.Potentials, Printf, ForwardDiff
 import JuLIPMaterials
+using LinearAlgebra
 
-MST = JuLIPMaterials
-CLE = MST.CLE
+CLE = JuLIPMaterials.CLE
 
-using CLE: grad
-using MST.Testing
+using JuLIPMaterials.CLE: grad
+using JuLIPMaterials.Testing
 using Einsum
 using GaussQuadrature: legendre
 
@@ -19,7 +19,7 @@ print("check conversion between spherical and euclidean: ")
 maxerr = 0.0
 for n = 1:10
    x = randvec3(1.0, 1.0)
-   maxerr = max(maxerr, norm(x - CLE.euclidean(CLE.spherical(x)...)))
+   global maxerr = max(maxerr, norm(x - CLE.euclidean(CLE.spherical(x)...)))
 end
 @test maxerr < 1e-14
 println("maxerr = $maxerr")
@@ -35,8 +35,8 @@ maxerr = 0.0
 maxerr_g = 0.0
 for n = 1:10
    x = randvec3()
-   maxerr = max( maxerr, vecnorm(G(x) - Giso(x), Inf) )
-   maxerr_g = max(maxerr_g, vecnorm(grad(G, x) - grad(Giso, x), Inf) )
+   global maxerr = max( maxerr, norm(G(x) - Giso(x), Inf) )
+   global maxerr_g = max(maxerr_g, norm(grad(G, x) - grad(Giso, x), Inf) )
 end
 println("maxerr = $maxerr, maxerr_g = $maxerr_g")
 @test maxerr < 1e-12
@@ -55,7 +55,7 @@ for (G, id, C) in [ (CLE.IsoGreenFcn3D(λ, μ), "IsoGreenFcn3D", Ciso),
       u = x_ -> (a' * G(x_))[:]
       ∂u = x_ -> reshape(a' *  reshape(grad(G, x_), 3, 9), 3, 3)
       ∂uad = x_ -> ForwardDiff.jacobian(u, x_)
-      maxerr = max( maxerr, vecnorm(∂u(x) - ∂uad(x), Inf) )
+      maxerr = max( maxerr, norm(∂u(x) - ∂uad(x), Inf) )
    end
    println("maxerr = $maxerr")
    @test maxerr < 1e-12
@@ -69,7 +69,7 @@ for (G, id, C) in [
    for n = 1:10
       a, x = randvec3(), randvec3()
       u = x_ -> G(x_) * a
-      maxerr = max( vecnorm(cleforce(x, u, C), Inf), maxerr )
+      maxerr = max( norm(cleforce(x, u, C), Inf), maxerr )
    end
    println("maxerr = $maxerr")
    @test maxerr < 1e-10
@@ -85,15 +85,16 @@ for (G, id, C) in [
    # (Could use Lebedev, but no obvious Julia package)
    n = 30;
    c, w = legendre(n)
-   I = zeros(3,3)
+   I1 = zeros(3,3)
    DGnu = zeros(3,3)
-   for ω in range(0.0, pi/n, 2*n), i=1:n
+   for ω in range(0.0, step = pi/n, length = 2*n), i=1:n
       x = [sqrt(1-c[i]^2)*cos(ω),sqrt(1-c[i]^2)*sin(ω),c[i]]
-      @einsum DGnu[a,b]  = C[a,β,γ,δ] * CLE.grad(G,x)[b,γ,δ] * x[β]
-      I -= DGnu*w[i]
+      DG = CLE.grad(G,x)
+      @einsum DGnu[a,b] = C[a,β,γ,δ] * DG[b,γ,δ] * x[β]
+      I1 -= DGnu*w[i]
    end
-   I = I*pi/n
-   maxerr = norm(I-eye(3))
+   I1 = I1*pi/n
+   maxerr = norm(I1 - I)
    println("maxerr = $maxerr")
    @test maxerr < 1e-12
 end
@@ -107,7 +108,7 @@ xtest = [ randvec3() for n = 1:10 ]
 G0 = CLE.GreenFunction(C, Nquad = 30)
 for nquad in [2, 4, 6, 8, 10, 12, 14]
    G = CLE.GreenFunction(C, Nquad = nquad)
-   err = maximum( vecnorm(G0(x) - G(x), Inf)   for x in xtest )
-   err_g = maximum( vecnorm(grad(G0, x) - grad(G, x), Inf)   for x in xtest )
+   err = maximum( norm(G0(x) - G(x), Inf)   for x in xtest )
+   err_g = maximum( norm(grad(G0, x) - grad(G, x), Inf)   for x in xtest )
    @printf("   %2d  | %.3e | %.3e  \n", nquad, err, err_g)
 end

@@ -1,7 +1,7 @@
 
 module FCC
 
-using JuLIP
+using JuLIP, LinearAlgebra
 
 using JuLIPMaterials.CLE: u_edge_isotropic, u_edge_fcc_110,
       voigt_moduli
@@ -14,8 +14,8 @@ const Afcc = JMatF([ 0.0 1 1; 1 0 1; 1 1 0])
 ensure that species `sym` actually crystallises to FCC
 """
 function check_fcc(sym::Symbol)
-   F = defm(bulk(sym))
-   @assert vecnorm(F/F[1,2] - Afcc) < 1e-12
+   F = cell(bulk(sym))'
+   @assert norm(F/F[1,2] - Afcc) < 1e-12
 end
 
 
@@ -41,7 +41,7 @@ function fcc_110_plane(sym::Symbol)
    # ensure s is actually an FCC species
    check_fcc(sym)
    # get the cubic unit cell dimension
-   a = ( bulk(sym, cubic=true) |> defm )[1,1]
+   a = ( bulk(sym, cubic=true) |> cell )[1,1]
    # construct the cell matrix
    F = a*JMat( [ sqrt(2)/2 0    0;
                  0   1     0;
@@ -50,7 +50,7 @@ function fcc_110_plane(sym::Symbol)
            JVec([(1/2)*1/sqrt(2), 1/2, 1/(2*sqrt(2))]) ]
    # construct ASEAtoms
    at = Atoms(sym, X)
-   set_defm!(at, F)
+   set_cell!(at, F')
    # compute a burgers vector in these coordinates
    b =  a*sqrt(2)/2*JVec([1.0,0.0,0.0])
    # compute a core-offset (to add to any lattice position)
@@ -137,7 +137,7 @@ function fcc_edge_geom(sym::Symbol, R::Real;
    xc, yc = mean(x), mean(y)
    r² = (x-xc).^2 + (y-yc).^2
    tip = minimum(r²) + .0000001
-   I0 = find(  tip .> r² .> 0 )[2*zDir]
+   I0 = findall(  tip .> r² .> 0 )[2*zDir]
    xcore = X12[I0] + xcore
    x, y = x - xcore[1], y - xcore[2]
 
@@ -167,12 +167,12 @@ function fcc_edge_geom(sym::Symbol, R::Real;
    X[1,:], X[2,:] = x + ux + xcore[1], y + uy + xcore[2]
    # if we want a circular cluster, then truncate to an approximate ball (disk)
    if truncate
-      F = defm(at) # store F for later use
+      F = cell(at)' # store F for later use
       X = vecs(X)  # find points within radius
-      IR = find( [vecnorm(x[1:2] - xcore) for x in X] .<= R * a/√2 )
+      IR = findall( [norm(x[1:2] - xcore) for x in X] .<= R * a/√2 )
       X = X[IR]
       at = Atoms(sym, X)  # generate a new atoms object
-      set_defm!(at, F)                 # and insert the old cell shape
+      set_cell!(at, F')                 # and insert the old cell shape
    end
    # update positions in Atoms object, set correct BCs and return
    set_positions!(at, X)

@@ -1,16 +1,15 @@
 using JuLIPMaterials
-using Base.Test
+using Test
 using JuLIP, JuLIP.Potentials
 using PyPlot
-MST = JuLIPMaterials
-BCC = MST.BCC
+BCC = JuLIPMaterials.BCC
 
 # data = Pkg.dir("JuLIP") * "/data/"
 # eam_W = JuLIP.Potentials.FinnisSinclair(data*"W-pair-Wang-2014.plt", data*"W-e-dens-Wang-2014.plt")
 
 morse = Morse(A = 3.5, r0 = rnn("W")) * C2Shift(2.3 * rnn("W"))
 at = bulk("W")
-set_constraint!(at, VariableCell(at))
+variablecell!(at)
 set_calculator!(at, morse)
 
 s = "W"

@@ -1,11 +1,10 @@
 
-using Base.Test
+using Test
 using JuLIP, ForwardDiff
-using JuLIPMaterials
+using JuLIPMaterials, LinearAlgebra, Printf
 
-MST = JuLIPMaterials
-CB = MST.CauchyBorn
-CLE = MST.CLE
+CB = JuLIPMaterials.CauchyBorn
+CLE = JuLIPMaterials.CLE
 FD = ForwardDiff
 
 println("------------------------------------------------------------")
@@ -16,18 +15,18 @@ at = bulk(:Fe)
 r0 = rnn(:Fe)
 calc = LennardJones(σ = r0) * C2Shift(2.7*r0)
 set_calculator!(at, calc)
-set_constraint!(at, VariableCell(at))
+variablecell!(at)
 # minimise!(at)
 println("Constructing Wcb . . .")
 W = CB.Wcb(at, calc)
 
 println("generate a cauchy Born potential . . . ")
 println("check W, grad(W..) evaluate ok . . .")
-@test W(eye(3)) == energy(at) / det(defm(at))
-@test CB.grad(W, eye(3)) isa AbstractMatrix
+@test W(Matrix(1.0*I,3,3)) == energy(at) / det(cell(at))
+@test CB.grad(W, Matrix(1.0*I,3,3)) isa AbstractMatrix
 
 println("Finite-difference consistency test")
-F = eye(3) + (rand(3,3) - 0.5) * 0.01
+F = Matrix(I,3,3) + (rand(3,3) .- 0.5) * 0.01
 W0 = W(F)
 dW0 = CB.grad(W, F)[:]
 errors = []
@@ -59,20 +58,20 @@ atu = bulk(:Fe)
 r0 = rnn(:Fe)
 calc = LennardJones(σ = r0) * C2Shift(2.7*r0)
 set_calculator!(atu, calc)
-set_constraint!(atu, VariableCell(atu))
+variablecell!(atu)
 println("Constructing Wcb . . .")
 W = CB.Wcb(atu, calc, normalise = :atoms)
 
 energy(atu)
-W(eye(3))
+W(Matrix(1.0*I,3,3))
 
-@test CB.grad(W, eye(3)) ≈ -virial(atu)
-@test stress(atu) == CB.grad(W, eye(3)) / det(cell(atu))
+@test CB.grad(W, Matrix(1.0*I,3,3)) ≈ -virial(atu)
+@test stress(atu) == CB.grad(W, Matrix(1.0*I,3,3)) / det(cell(atu))
 
 at1 = deepcopy(atu)
-F0 = defm(at1)
+F0 = cell(at1)'
 for n = 1:5
-   F = eye(3) + 0.1 * rand(3,3)
-   set_defm!(at1, F * F0)
+   F = Matrix(1.0*I,3,3) + 0.1 * rand(3,3)
+   set_cell!(at1, (F * F0)')
    @test energy(calc, at1) == W(F)
 end

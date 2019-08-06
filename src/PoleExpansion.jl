@@ -78,7 +78,7 @@ function dipole_tensor(at, athom;
       if Rin == :auto
          Rin = 0.6 * (maximum(r) - 2*cutoff(V))
       end
-      Iin = find(r .< Rin)
+      Iin = findall(r .< Rin)
    end
 
    return  sum( Flin[Iin] ),

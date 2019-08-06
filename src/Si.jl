@@ -5,7 +5,7 @@
 
 module Si
 
-using JuLIP, QuadGK, ForwardDiff
+using JuLIP, QuadGK, ForwardDiff, LinearAlgebra
 
 import JuLIPMaterials
 
@@ -36,7 +36,7 @@ Returns
 * `a` : lattice parameter
 """
 function si110_plane(s::Symbol;
-                     a = defm(bulk(s, cubic=true))[1,1] )
+                     a = cell(bulk(s, cubic=true))[1,1] )
    # TODO: can si110_plane be combined with FCC.fcc_110_plane?
    @assert s == :Si
    # for Si, default a = 5.43
@@ -52,7 +52,7 @@ function si110_plane(s::Symbol;
              JVec([ 0.5/sqrt(2),  0.25,          0.0 ]) ]
    # construct ASEAtoms
    at = Atoms(s, X)
-   set_defm!(at, F)
+   set_cell!(at, F')
    # compute a burgers vector in these coordinates
    b = a * sqrt(2)/2 * JVec([1.0,0.0,0.0])
    # compute a core-offset (to add to any lattice position)
@@ -131,7 +131,7 @@ function symml_displacement!(at, u)
     @assert isempty(Idel)  # if Idel is not empty then (for now) we don't know what to do
     X = positions(at)
     W = CauchyBornSi.WcbQuad(calculator(at))   # TODO: generalise this to general calculators
-    F0 = defm(W.at)
+    F0 = cell(W.at)'
     p0 = W(F0)
     # transformation matrices
     Tp = [0 1/√2  -1/√2; 1 0 0; 0 1/√2 1/√2]
@@ -160,7 +160,7 @@ function ml_displacement!(at, u)
     Tp = [0 1/√2  -1/√2; 1 0 0; 0 1/√2 1/√2]
     Tm = diagm([1,1,-1]) * Tp
 
-    F0 = defm(W.at)  # get reference information
+    F0 = cell(W.at)'  # get reference information
     p0 = W(F0)
 
     for (i0, i1) in zip(I0, I1)   # each pair (i0, i1) corresponds to a ML lattice site
@@ -190,7 +190,7 @@ function edge110(species::Symbol, R::Real;
                   calc=sw_eq(), sym = true,
                   TOL=1e-4, zDir=1,
                   eos_correction = true,
-                  a = defm(bulk(species, cubic=true))[1,1])
+                  a = cell(bulk(species, cubic=true))[1,1])
 
    @assert species == :Si
 
@@ -198,9 +198,9 @@ function edge110(species::Symbol, R::Real;
    if a == :equilibrate
        atu = bulk(species, cubic=true, pbc=true)
        set_calculator!(atu, calc)
-       set_constraint!(atu, VariableCell(atu))
+       variablecell!(atu)
        minimise!(atu)
-       a = defm(atu)[1,1]
+       a = cell(atu)[1,1]
    end
 
    # setup undeformed geometry

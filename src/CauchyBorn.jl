@@ -2,11 +2,12 @@
 
 module CauchyBorn
 
-using JuLIP, StaticArrays, Calculus
+using JuLIP, StaticArrays, Calculus, LinearAlgebra
 
 import JuLIPMaterials.CLE: elastic_moduli
 
 using JuLIPMaterials: ee, Vec3, Mat3
+using JuLIP: AbstractAtoms, AbstractCalculator
 
 abstract type Wcb end
 
@@ -44,8 +45,7 @@ Or, simply pass in a scalar `normalise = v0`.
 * `div_grad(W,F)` : finite-difference implementation of div ∂W(F)
 """
 function Wcb(at::AbstractAtoms, calc::AbstractCalculator;
-             normalise=:volume, kwargs...)
-   const T = Float64
+             normalise=:volume, T = Float64, kwargs...)
    set_calculator!(at, calc)
    # compute the normalisation factor; volume or what?
    if normalise == :volume
@@ -70,7 +70,7 @@ function Wcb(at::AbstractAtoms, calc::AbstractCalculator;
 end
 
 
-set_rel_defm!(W::Wcb, F) = set_defm!(W.at, F * W.C0')
+set_rel_defm!(W::Wcb, F) = set_cell!(W.at, (F * W.C0')')
 
 
 # ================ Simple Lattice Cauchy--Born  ==============
@@ -137,7 +137,7 @@ grad_p(W::Wcb2, F, p) = - forces( set_F_and_p!(W, F, p) )[2]
 # grad_F(W::Wcb2, F, p) = 0  # TODO
 
 function dpdpWcb(W::Wcb2{T}) where T
-   J = Calculus.jacobian(p -> grad_p(W, eye(3), p))
+   J = Calculus.jacobian(p -> grad_p(W, Matrix(I,3,3), p))
    dpdpW = J(W.p1)
    return Mat3{T}(0.5 * (dpdpW + dpdpW'))
 end
@@ -165,7 +165,7 @@ end
 #
 # function elastic_moduli(W::WcbQuad)
 #    F0 = W.F0 |> Matrix
-#    Ih = eye(3)
+#    Ih = Matrix(I, 3,3)
 #    h = eps()^(1/3)
 #    C = zeros(3,3,3,3)
 #    for i = 1:3, a = 1:3

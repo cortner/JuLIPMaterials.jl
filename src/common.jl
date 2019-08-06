@@ -1,7 +1,8 @@
 
-using JuLIP, StaticArrays, NearestNeighbors
+using JuLIP, StaticArrays, NearestNeighbors, LinearAlgebra
 
-import Base.findin
+using JuLIP: AbstractCalculator, AbstractAtoms
+
 
 export strains, dists
 
@@ -15,7 +16,7 @@ const MMat3{T} = MMatrix{3,3,T}
 const MTen33{T} = MArray{Tuple{3,3,3},T,3,27}
 const MTen43{T} = MArray{NTuple{4,3},T,4,81}
 
-const _EE = @SMatrix eye(3)
+const _EE = ones(SMatrix{3,3,Float64})
 ee(i::Integer) = _EE[:,i]
 
 
@@ -58,13 +59,13 @@ function force_constants(calc::AbstractCalculator, at::Atoms{T}; h = 1e-5) where
    H = [ - [∂f_∂xi[1][n] ∂f_∂xi[2][n] ∂f_∂xi[3][n]]'  for n = 1:length(cl) ]
    @show typeof(H)
    # extract the non-zero entries
-   Inz = setdiff(find( norm.(H) .> 1e-8 ), [1])
+   Inz = setdiff(findall( norm.(H) .> 1e-8 ), [1])
    # . . . and return
    R = [y - x for y in positions(cl)[Inz]]
    return R, H[Inz]
 end
 
-force_constants{T}(calc::PairPotential, at::Atoms{T}) =
+force_constants(calc::PairPotential, at::Atoms{T}) where {T} =
       force_constants(SitePotential(calc), at)
 
 

@@ -3,3 +3,4 @@
 *.jl.mem
 *checkpoint.ipynb
 .nbgrader.log
+Manifest.toml

@@ -11,7 +11,8 @@ for R in [3, 4, 6, 9, 13, 20]
    at = deleteat!(deepcopy(athom), 1)   # create a vacancy
    x̄ = athom[1]
    r = [norm(x-x̄) for x in positions(at)]
-   set_constraint!(at, FixedCell(at, free = find(r .< R *r0)))
+   fixedcell!(at)
+   set_free!(at, findall(r .< R *r0))
    set_calculator!(at, V)
 
    C0, C1 = JuLIPMaterials.PoleExpansion.dipole_tensor(at, athom;
@@ -48,7 +49,7 @@ Plots.plot!(RR, 10*RR.^(-2.5), lw=1, ls = :dash, ms = 0, label = "~ R^{-2.5}")
 # X0 = positions(at)
 # @assert norm(x̄ - mean(X0)) < 1e-10
 # r = [ norm(x - x̄) for x in X0 ]
-# set_constraint!( at, FixedCell(at, free = find(r .< R*r0)) )
+# set_constraint!( at, FixedCell(at, free = findall(r .< R*r0)) )
 # set_calculator!( at, V )
 # minimise!(at, method = :lbfgs, precond = FF(at, V), verbose=2, gtol = 1e-6)
 # X = positions(at)

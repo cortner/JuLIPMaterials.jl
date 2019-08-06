@@ -7,7 +7,7 @@ module PointDefects
 
    export PointDefect, Vacancy, SelfInterstitial
 
-   abstract PointDefect
+   abstract type PointDefect end
    immutable Vacancy <: PointDefect end
    immutable SelfInterstitial <: PointDefect end
 

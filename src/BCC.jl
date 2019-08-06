@@ -11,7 +11,7 @@ function lattice_constants_111(sym::Symbol; calc = nothing)
       a0 = rnn(s)
    else
       at0 = bulk(sym, cubic=true, pbc=true)
-      set_constraint!(at0, VariableCell(at0))
+      variablecell!(at0)
       set_calculator!(at0, calc)
       minimise!(at0, verbose=0)
       a0 = sqrt(3)/2 * cell(at0)[1,1]
@@ -30,7 +30,7 @@ function cell_111(sym::Symbol; calc=nothing)
    X = [ [0.0, 0.0, 0.0] [b0, 0.0, a0/3] [2*b0, 0.0, 2*a0/3] [b0/2, c0, 2*a0/3] [3*b0/2, c0, 0.0] [5*b0/2, c0, a0/3] ] |> vecs
    F = diagm([3*b0, 2*c0, a0])
    at = Atoms(sym, X)
-   set_defm!(at, F)
+   set_cell!(at, F')
    set_pbc!(at, true)
    return at
 end

@@ -13,7 +13,7 @@ function bulktri(; a0 = 1.0, L = 1)
    F = [ 1.0 0.0 0.0; 0.0 √3 0.0; 0.0 0.0 1.0 ]
    at = ASEAtoms("Cu2")
    set_positions!(at, X)
-   set_defm!(at, F)
+   set_cell!(at, F')
 
    if L == 1
       set_pbc!(at, (true, true, false))
@@ -36,7 +36,7 @@ function edge_geom(; a0 = 1.0, L = 7, b = 1.0, ν = 0.25,
    at = bulktri(a0=a0, L=L)
    X = positions(at)
    # find center-atom
-   F = defm(at)
+   F = cell(at)'
    x0 = JVec( [0.5 * diag(F)[1:2]; 0.0] )
    _ , I0 = findmin( [norm(x - x0) for x in X] )
    # dislocation core
@@ -63,10 +63,10 @@ end
 function edge_cluster(R::Number; kwargs...)
    at = edge_geom(;L = ceil(Int, R) * 2 + 3, kwargs...)
    X = positions(at)
-   X = X[find(norm.(X) .<= R)]
+   X = X[findall(norm.(X) .<= R)]
    cl = ASEAtoms("Al$(length(X))")
    set_positions!(cl, X)
-   set_defm!(cl, defm(at))
+   set_cell!(cl, cell(at))
    set_pbc!(cl, (false, false, false))
    return cl
 end
@@ -78,12 +78,12 @@ function cluster(R::Number; a0=1.0)
    _, I0 = findmin( [norm(x - xc) for x in X] )
    x0 = X[I0]
    X = [x - x0 for x in X]
-   X = X[find(norm.(X) .<= R)]
+   X = X[findall(norm.(X) .<= R)]
    _, I0 = findmin( norm.(X) )
    X[I0], X[1] = X[1], X[I0]
    cl = ASEAtoms("Al$(length(X))")
    set_positions!(cl, X)
-   set_defm!(cl, defm(at))
+   set_cell!(cl, cell(at))
    set_pbc!(cl, (false, false, false))
    return cl
 end

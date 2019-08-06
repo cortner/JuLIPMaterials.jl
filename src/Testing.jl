@@ -1,7 +1,7 @@
 
 module Testing
 
-using ForwardDiff
+using ForwardDiff, LinearAlgebra
 
 import JuLIPMaterials
 using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43,
@@ -13,7 +13,7 @@ export randvec3, randmoduli, cleforce
 
 
 function randvec3(s0=1.0, s1=2.0)
-   x = rand(3) - 0.5
+   x = rand(3) .- 0.5
    return (x / norm(x)) * (s0 + rand() * (s1-s0))
 end
 
@@ -24,7 +24,7 @@ function randmoduli(rnd = 0.1)
           0.0 0.0 0.0 1.2 0.0 0.0
           0.0 0.0 0.0 0.0 1.2 0.0
           0.0 0.0 0.0 0.0 0.0 1.2 ]
-   Cv += Symmetric( 2*rnd*(rand(6, 6)-0.5) )
+   Cv += Symmetric( 2*rnd*(rand(6, 6) .- 0.5) )
    return CLE.elastic_moduli(Cv)
 end
 

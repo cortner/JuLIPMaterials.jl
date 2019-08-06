@@ -1,5 +1,5 @@
 using JuLIPMaterials
-using Base.Test
+using Test
 
 tests = [
    # "test_elasticity.jl",   # TODO: this one is a joke, needs to be redone

@@ -28,7 +28,7 @@ export WcbQuad
 
 function DpWcb(F, p, at, calc)
     @assert length(at) == 2
-    set_defm!(at, F)
+    set_cell!(at, F')
     X = positions(at)
     X[2] = X[1] + p
     set_positions!(at, X)
@@ -38,7 +38,7 @@ end
 
 function DpDpWcb(at)
     calc = calculator(at)
-    F0 = defm(at)
+    F0 = cell(at)'
     p0 = positions(at)[2] |> Vector
     h = 1e-5
     DpDpW = zeros(3, 3)
@@ -54,7 +54,7 @@ function DpDpWcb(at)
 end
 
 
-type WcbQuad{TA, TF, TC}
+mutable struct WcbQuad{TA, TF, TC}
     DpDpW::Matrix{Float64}
     DpDpW_inv::Matrix{Float64}
     at::TA
@@ -67,7 +67,7 @@ function WcbQuad(calc)
     at = bulk(:Si, pbc=true)
     set_calculator!(at, calc)
     DpDpW = DpDpWcb(at)
-    return WcbQuad(DpDpW, pinv(DpDpW), at, calc, defm(at))
+    return WcbQuad(DpDpW, pinv(DpDpW), at, calc, cell(at)')
 end
 
 # TODO: replace with get_shift
@@ -83,7 +83,7 @@ end
 function DW_infp(W::WcbQuad, F)
     p = W(F)
     at = W.at
-    set_defm!(at, F)
+    set_cell!(at, F')
     X = positions(at)
     X[2] = p
     set_positions!(at, X)
@@ -93,7 +93,7 @@ end
 
 function elastic_moduli(W::WcbQuad)
    F0 = W.F0 |> Matrix
-   Ih = eye(3)
+   Ih = Matrix(I, 3, 3)
    h = eps()^(1/3)
    C = zeros(3,3,3,3)
    for i = 1:3, a = 1:3

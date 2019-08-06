@@ -9,7 +9,7 @@ export GreenFunction, IsoGreenFcn3D, grad
 
 
 # extend `angle` to avoid going via ℂ
-Base.angle(x, y) = atan2(y, x)
+Base.angle(x, y) = atan(y, x)
 
 "convert normalised vector to spherical coordinates"
 spherical(x) = angle(x[1], x[2]), angle(norm(x[1:2]), x[3])
@@ -18,7 +18,7 @@ spherical(x) = angle(x[1], x[2]), angle(norm(x[1:2]), x[3])
 euclidean(φ, ψ) = Vec3(cos(ψ) * cos(φ), cos(ψ) * sin(φ), sin(ψ))
 
 "given a vector x ∈ ℝ³, return `z0, z1` where `(x/norm(x),z0,z1)` form a right--handed ONB."
-function onb{T}(x::Vec3{T})
+function onb(x::Vec3{T}) where {T}
    x /= norm(x)
    φ, ψ = spherical(x)
    return Vec3{T}( sin(ψ)*cos(φ), sin(ψ)*sin(φ), -cos(ψ) ),
@@ -48,7 +48,8 @@ function GreenFunction(C::Ten43; Nquad = nothing, remove_singularity = true)
 end
 
 
-GreenFunction{T}(C::Array{T, 4}; kwargs...) = GreenFunction(Ten43{T}(C); kwargs...)
+GreenFunction(C::Array{T, 4}; kwargs...) where {T} =
+      GreenFunction(Ten43{T}(C); kwargs...)
 
 
 GreenFunction(at::AbstractAtoms; kwargs...) =
@@ -83,7 +84,7 @@ function eval_green(x::Vec3{TT}, ℂ::Ten43, Nquad::Int) where TT
    # two vectors orthogonal to x.
    x1, x2 = onb(x̂)
    # Integrate
-   for ω in range(0.0, pi/Nquad, Nquad)
+   for ω in range(0.0, step = pi/Nquad, length = Nquad)
       z = cos(ω) * x1 + sin(ω) * x2
       @einsum zz[i,j] = z[α] * ℂ[i,α,j,β] * z[β]
       # Perform integration
@@ -104,7 +105,7 @@ function grad_green(x::Vec3{TT}, ℂ::Ten43, Nquad::Int) where TT
    # two vectors orthogonal to x.
    x1, x2 = onb(x̂)
    # Integrate
-   for ω in range(0.0, pi/Nquad, Nquad)
+   for ω in range(0.0, step = pi/Nquad, length = Nquad)
       z = cos(ω) * x1 + sin(ω) * x2
       @einsum zz[i,j] = z[α] * ℂ[i,α,j,β] * z[β]
       @einsum zT[i,j] = z[α] * ℂ[i,α,j,β] * x̂[β]
@@ -143,7 +144,7 @@ end
 
 "isotropic CLE Green's function"
 function eval_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T
-   Id = @SMatrix eye(T, 3)
+   Id = one(SMatrix{3,3,T})
    x̂ = x/norm(x)
    return (((λ+3*μ)/(λ+2*μ)/norm(x)) * Id  +
                ((λ+μ)/(λ+2*μ)/norm(x)) * x̂ * x̂') / (8.0*π*μ)
@@ -152,7 +153,7 @@ end
 "gradient of isotropic CLE Green's function"
 function grad_greeniso(x::Vec3{T}, λ::Real, μ::Real) where T
    DG = @MArray zeros(T, 3, 3, 3)
-   Id = @SArray eye(T, 3)
+   Id = one(SMatrix{3,3,T})
    x̂ = x / norm(x)
    for i = 1:3, j = 1:3, k = 1:3
       DG[i,j,k] = (λ+μ) * (Id[i,k] * x̂[j] + Id[j,k] * x̂[i]) - (λ+3*μ) * Id[i,j] * x̂[k] - 3*(λ+μ) * x̂[i] * x̂[j] * x̂[k]
