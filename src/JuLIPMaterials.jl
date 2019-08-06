@@ -16,7 +16,7 @@ include("Testing.jl")
 
 # include("CauchyBorn.jl")
 
-# include("Si.jl")
+include("Si.jl")
 
 # include("TriangularLattice.jl")
 

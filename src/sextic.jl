@@ -49,7 +49,7 @@ function u_edge_fcc_110(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4) where {T}
    #with numeric instability.  Complex log formulas seem to work
    bar = sqrt( .5*Cv[1,1]*(Cv[1,1] +Cv[1,2] + 2.0*Cv[4,4]) )
    C = ( (bar + Cv[1,2])*(bar - Cv[1,2] - 2.0*Cv[4,4] )  )/(bar*Cv[4,4])
-   lem = (bar/Cv[1,1])^(1/2)
+   lem = sqrt(bar/Cv[1,1]+0im)
 
    delta2 = sqrt(-C)
    delta1 = sqrt(C+4)
@@ -60,7 +60,7 @@ function u_edge_fcc_110(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4) where {T}
    #Skip to general formula using complex logs
 
    K = fourth_order_basis(Cv,a)
-   Cvoigt = round.(K, 3)
+   Cvoigt = round.(K, digits=3)
    c̄11 = sqrt(K[1,1]*K[2,2])    # (13-106)
    lam = (K[1,1]/K[2,2])^(1/4)
      ϕ = 0.5 * acos( (K[1,2]^2 + 2*K[1,2]*K[6,6] - c̄11^2) / (2.0*c̄11*K[6,6]) )

@@ -6,6 +6,8 @@ using JuLIP
 using JuLIPMaterials.CLE: u_edge_isotropic, u_edge_fcc_110,
       voigt_moduli
 
+using LinearAlgebra
+using Statistics: mean
 
 
 const Afcc = JMatF([ 0.0 1 1; 1 0 1; 1 1 0])
@@ -14,7 +16,7 @@ const Afcc = JMatF([ 0.0 1 1; 1 0 1; 1 1 0])
 ensure that species `sym` actually crystallises to FCC
 """
 function check_fcc(sym::Symbol)
-   F = defm(bulk(sym))
+   F = cell(bulk(sym))'
    @assert norm(F/F[1,2] - Afcc) < 1e-12
 end
 
@@ -41,7 +43,7 @@ function fcc_110_plane(sym::Symbol)
    # ensure s is actually an FCC species
    check_fcc(sym)
    # get the cubic unit cell dimension
-   a = ( bulk(sym, cubic=true) |> defm )[1,1]
+   a = ( bulk(sym, cubic=true) |> cell )[1,1]
    # construct the cell matrix
    F = a*JMat( [ sqrt(2)/2 0    0;
                  0   1     0;
@@ -50,7 +52,7 @@ function fcc_110_plane(sym::Symbol)
            JVec([(1/2)*1/sqrt(2), 1/2, 1/(2*sqrt(2))]) ]
    # construct ASEAtoms
    at = Atoms(sym, X)
-   set_defm!(at, F)
+   set_cell!(at, F)
    # compute a burgers vector in these coordinates
    b =  a*sqrt(2)/2*JVec([1.0,0.0,0.0])
    # compute a core-offset (to add to any lattice position)
@@ -82,8 +84,8 @@ function xi_solver(Y::Vector, b; TOL = 1e-10, maxnit = 5)
 end
 
 
-function eoscorr(X::Matrix, b)
-   Xmod = zeros(X)
+function eoscorr(X::Matrix{T}, b) where {T}
+   Xmod = zeros(T, size(X))
    for n = 1:size(X,2)
       Xmod[:, n] = xi_solver(X[:,n], b)
    end
@@ -135,11 +137,11 @@ function fcc_edge_geom(sym::Symbol, R::Real;
    # compute x, y coordinates relative to the core
    x, y = mat(X12)[1,:], mat(X12)[2,:]
    xc, yc = mean(x), mean(y)
-   r² = (x-xc).^2 + (y-yc).^2
+   r² = (x .-  xc).^2 + (y .- yc).^2
    tip = minimum(r²) + .0000001
-   I0 = find(  tip .> r² .> 0 )[2*zDir]
+   I0 = findall(  tip .> r² .> 0 )[2*zDir]
    xcore = X12[I0] + xcore
-   x, y = x - xcore[1], y - xcore[2]
+   x, y = x .- xcore[1], y .- xcore[2]
 
    if eos_correction
       Xmod = eoscorr([x'; y'], -b)
@@ -164,15 +166,15 @@ function fcc_edge_geom(sym::Symbol, R::Real;
    end
    # apply the linear elasticity displacement
    X = positions(at) |> mat
-   X[1,:], X[2,:] = x + ux + xcore[1], y + uy + xcore[2]
+   X[1,:], X[2,:] = (x + ux) .+ xcore[1], (y + uy) .+ xcore[2]
    # if we want a circular cluster, then truncate to an approximate ball (disk)
    if truncate
-      F = defm(at) # store F for later use
+      F = cell(at)' # store F for later use
       X = vecs(X)  # find points within radius
-      IR = find( [norm(x[1:2] - xcore) for x in X] .<= R * a/√2 )
+      IR = findall( [norm(x[1:2] - xcore) for x in X] .<= R * a/√2 )
       X = X[IR]
       at = Atoms(sym, X)  # generate a new atoms object
-      set_defm!(at, F)                 # and insert the old cell shape
+      set_cell!(at, F')                 # and insert the old cell shape
    end
    # update positions in Atoms object, set correct BCs and return
    set_positions!(at, X)

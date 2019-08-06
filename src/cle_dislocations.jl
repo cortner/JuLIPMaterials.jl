@@ -80,7 +80,7 @@ This is to be used primarily for comparison, since the exact solution will
 not be the isotropic elasticity solution.
 """
 function u_edge_isotropic(x, y, b, ν)
-    warn("This function is to be replaced by new Isotropic Edge Dislocation type")
+    # @warn("This function is to be replaced by new Isotropic Edge Dislocation type")
     r² = x.^2 + y.^2
     ux = b/(2*π) * ( angle.(x + im*y) + (x .* y) ./ (2*(1-ν) * r²) )
     uy = -b/(2*π) * ( (1-2*ν)/(4*(1-ν)) * log.(r²) - 2 * y.^2 ./ (4*(1-ν) * r²) )
