@@ -6,24 +6,7 @@ using JuLIP, LinearAlgebra
 using JuLIP.Potentials: StillingerWeber
 import JuLIPMaterials.CLE: elastic_moduli
 
-export WcbQuad
-
-
-# "a fully equilibrated SW potential"
-# function sw_eq()
-#     T(σ, at) = trace(stress(StillingerWeber(σ=σ), at))
-#     at = JuLIP.ASE.bulk("Si", pbc=true)
-#     r0 = 2.09474
-#     r1 = r0 - 0.1
-#     s0, s1 = T(r0, at), T(r1, at)
-#     while (abs(s1) > 1e-8) && abs(r0 - r1) > 1e-8
-#         rnew = (r0 * s1 - r1 * s0) / (s1 - s0)
-#         r0, r1 = r1, rnew
-#         s0, s1 = s1, T(rnew, at)
-#     end
-# #     @show r1
-#     return StillingerWeber(σ=r1)
-# end
+export WcbQuad, get_shift
 
 
 function DpWcb(F, p, at, calc)
@@ -63,7 +46,6 @@ mutable struct WcbQuad{TA, TF, TC}
 end
 
 function WcbQuad(calc)
-    # sw = sw_eq()
     at = bulk(:Si, pbc=true)
     set_calculator!(at, calc)
     DpDpW = DpDpWcb(at)
@@ -73,15 +55,18 @@ end
 # TODO: replace with get_shift
 function (W::WcbQuad)(F)
     # TODO this is fishy - why is the initial position not reset?
+    error("this functionality has been deprecated -> use `get_shift`")
+end
+
+function get_shift(W::WcbQuad, F)
     p0 = positions(W.at)[2]
     p1 = p0 - W.DpDpW_inv * DpWcb(F, p0, W.at, W.calc)
     p2 = p1 - W.DpDpW_inv * DpWcb(F, p1, W.at, W.calc)
     return p2
 end
 
-
 function DW_infp(W::WcbQuad, F)
-    p = W(F)
+    p = get_shift(W, F)
     at = W.at
     set_cell!(at, F')
     X = positions(at)

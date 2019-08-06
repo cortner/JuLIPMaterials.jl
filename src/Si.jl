@@ -18,6 +18,7 @@ FCC = JuLIPMaterials.FCC
 # CauchyBorn = JuLIPMaterials.CauchyBorn
 
 include("CauchyBorn_Si.jl")
+using JuLIPMaterials.Si.CauchyBornSi: WcbQuad, get_shift
 
 """
 `si110_plane(s::AbstractString) -> at::ASEAtoms, b, xcore, a `
@@ -95,14 +96,18 @@ end
 
 """
 a function that identifies multi-lattice structure in 2 layers of bulk-Si
-(yes - very restrictive but will do for now!)
+(yes - very restrictive but will do for now!).
+
+Returns `J0, J1, Jdel` :
+* `J0` : site that has a neighbour "above" (in x-direction)
+* `J1` : site that has a neighbour "below"
+* `Jdel` : has neither; doesn't fit into a "nice" 110 sheet.
 """
 function si_multilattice(at; TOL = 0.2)
     J0 = Int[]
     J1 = Int[]
     Jdel = Int[]
     for (i, j, R) in sites(at, rnn(:Si)+0.1)
-        r = norm(R)
         foundneig = false
         for (jj, RR) in zip(j, R)
             if (abs(RR[1]) <= TOL) && (abs(RR[2] - 1.3575) < TOL)
@@ -126,25 +131,31 @@ function si_multilattice(at; TOL = 0.2)
 end
 
 
+"""
+`symml_displacement!(at, u)`
 
+Given a "macroscopic" displacement field `u`, this applies the macroscopic
+field + internal shift.
+"""
 function symml_displacement!(at, u)
     I0, I1, Idel = si_multilattice(at)
     @assert isempty(Idel)  # if Idel is not empty then (for now) we don't know what to do
     X = positions(at)
-    W = CauchyBornSi.WcbQuad(calculator(at))   # TODO: generalise this to general calculators
-    F0 = cell(W.at)'
-    p0 = W(F0)
-    # transformation matrices
+    # TODO: generalise this to general calculators
+    W = CauchyBornSi.WcbQuad(calculator(at))
+    F0 = cell(W.at)'   # reference "deformation"
+    p0 = CauchyBornSi.get_shift(W, F0)         # equilibrium shift for F0 strain
+    # transformation matrices for plus-sited and minus-sites (cf I0, I1)
     Tp = [0 1/√2  -1/√2; 1 0 0; 0 1/√2 1/√2]
     Tm = Diagonal([1,1,-1]) * Tp
 
     for (i0, i1) in zip(I0, I1)   # each pair (i0, i1) corresponds to a ML lattice site
         x0, x1 = X[i0], X[i1]
         x1[3] > x0[3] ? T = Tp : T = Tm
-        x̄ = 0.5 * (x0 + x1)   # centre of mass of the bond
-        U, ∇U = u(x̄)          # displacement and displacement gradient
-        F = T' * (I + ∇U) * T
-        q = T * (W(F * F0) - p0)    # construct the shift corresponding to F = Id + ∇U
+        x̄ = 0.5 * (x0 + x1)      # centre of mass of the bond
+        U, ∇U = u(x̄)             # macroscopic displacement and displacement gradient
+        F = T' * (I + ∇U) * T    # corresponding deformation gradient
+        q = T * (CauchyBornSi.get_shift(W, F * F0) - p0)    # construct the shift corresponding to F = Id + ∇U
         X[i0], X[i1] = x0 + U - 0.5 * q, x1 + U + 0.5 * q
     end
     set_positions!(at, X)
@@ -162,14 +173,14 @@ function ml_displacement!(at, u)
     Tm = Diagonal([1,1,-1]) * Tp
 
     F0 = cell(W.at)'  # get reference information
-    p0 = W(F0)
+    p0 = CauchyBornSi.get_shift(W, F0)
 
     for (i0, i1) in zip(I0, I1)   # each pair (i0, i1) corresponds to a ML lattice site
         x0, x1 = X[i0], X[i1]
         x1[3] > x0[3] ? T = Tp : T = Tm
         U, ∇U = u(x0)            # displacement and displacement gradient
         F = T' * (I + ∇U) * T
-        q = T * (W(F * F0) - p0)   # construct the shift corresponding to F = Id + ∇U
+        q = T * (CauchyBornSi.get_shift(W, F * F0) - p0)   # construct the shift corresponding to F = Id + ∇U
         X[i0], X[i1] = x0 + U, x1 + U + q
     end
     set_positions!(at, X)
