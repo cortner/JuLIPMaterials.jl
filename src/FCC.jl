@@ -1,7 +1,7 @@
 
 module FCC
 
-using JuLIP, LinearAlgebra
+using JuLIP, LinearAlgebra, Statistics
 
 using JuLIPMaterials.CLE: u_edge_isotropic, u_edge_fcc_110,
       voigt_moduli
@@ -83,7 +83,7 @@ end
 
 
 function eoscorr(X::Matrix, b)
-   Xmod = zeros(X)
+   Xmod = 0 * X  # zeros(X)
    for n = 1:size(X,2)
       Xmod[:, n] = xi_solver(X[:,n], b)
    end
@@ -135,11 +135,11 @@ function fcc_edge_geom(sym::Symbol, R::Real;
    # compute x, y coordinates relative to the core
    x, y = mat(X12)[1,:], mat(X12)[2,:]
    xc, yc = mean(x), mean(y)
-   r² = (x-xc).^2 + (y-yc).^2
+   r² = (x .- xc).^2 + (y .- yc).^2
    tip = minimum(r²) + .0000001
    I0 = findall(  tip .> r² .> 0 )[2*zDir]
    xcore = X12[I0] + xcore
-   x, y = x - xcore[1], y - xcore[2]
+   x, y = x .- xcore[1], y .- xcore[2]
 
    if eos_correction
       Xmod = eoscorr([x'; y'], -b)
@@ -164,7 +164,7 @@ function fcc_edge_geom(sym::Symbol, R::Real;
    end
    # apply the linear elasticity displacement
    X = positions(at) |> mat
-   X[1,:], X[2,:] = x + ux + xcore[1], y + uy + xcore[2]
+   X[1,:], X[2,:] = (x + ux) .+ xcore[1], (y + uy) .+ xcore[2]
    # if we want a circular cluster, then truncate to an approximate ball (disk)
    if truncate
       F = cell(at)' # store F for later use

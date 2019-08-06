@@ -2,7 +2,7 @@
 
 module CauchyBornSi
 
-using JuLIP
+using JuLIP, LinearAlgebra
 using JuLIP.Potentials: StillingerWeber
 import JuLIPMaterials.CLE: elastic_moduli
 
@@ -93,7 +93,7 @@ end
 
 function elastic_moduli(W::WcbQuad)
    F0 = W.F0 |> Matrix
-   Ih = Matrix(I, 3, 3)
+   Ih = Matrix(1.0*I, 3, 3)
    h = eps()^(1/3)
    C = zeros(3,3,3,3)
    for i = 1:3, a = 1:3

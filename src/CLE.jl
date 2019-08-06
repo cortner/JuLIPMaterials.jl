@@ -2,7 +2,7 @@
 module CLE
 
 using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
-             stress, cell, set_cell!
+             stress, cell, set_cell!, apply_defm!
 
 using StaticArrays, LinearAlgebra
 
@@ -72,7 +72,7 @@ voigt_moduli(C::Array{T,4}) where {T} =
       reshape(C, 9, 9)[voigtinds, voigtinds]
 
 
-function elastic_moduli(Cv::AbstractMatrix{T}) where {T} 
+function elastic_moduli(Cv::AbstractMatrix{T}) where {T}
    @assert size(Cv) == (6,6)
    C = zeros(T, 9,9)
    C[voigtinds, voigtinds] = Cv

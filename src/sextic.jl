@@ -60,7 +60,7 @@ function u_edge_fcc_110(x, y, b, Cv::Array{T,2}, a; TOL = 1e-4) where {T}
    #Skip to general formula using complex logs
 
    K = fourth_order_basis(Cv,a)
-   Cvoigt = round.(K, 3)
+   Cvoigt = round.(K, digits=3)
    c̄11 = sqrt(K[1,1]*K[2,2])    # (13-106)
    lam = (K[1,1]/K[2,2])^(1/4)
      ϕ = 0.5 * acos( (K[1,2]^2 + 2*K[1,2]*K[6,6] - c̄11^2) / (2.0*c̄11*K[6,6]) )
@@ -122,7 +122,7 @@ function EdgeCubic(b::Real, Cv::Array{T,2}, a::Real; x0 = zeros(3)) where {T}
    # Something seems to be either wrong with these formulas or numeric issues are arising
    # Skip to general formula using complex logs
    K = fourth_order_basis(Cv,a; Tr = [0 1/√2  -1/√2; 1 0 0; 0 1/√2 1/√2])
-   Cvoigt = round.(K, 8)
+   Cvoigt = round.(K, digits=8)
 
    # more parameters
    c̄11 = sqrt(K[1,1]*K[2,2])    # (13-106)

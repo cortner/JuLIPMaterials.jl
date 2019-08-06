@@ -65,7 +65,7 @@ end
 
 "a fully equilibrated SW potential"
 function sw_eq()
-    T(σ, at) = trace(stress(StillingerWeber(σ=σ), at))
+    T(σ, at) = tr(stress(StillingerWeber(σ=σ), at))
     at = bulk(:Si, pbc=true)
     r0 = 2.09474
     r1 = r0 - 0.1
@@ -101,7 +101,8 @@ function si_multilattice(at; TOL = 0.2)
     J0 = Int[]
     J1 = Int[]
     Jdel = Int[]
-    for (i, j, r, R) in sites(at, rnn(:Si)+0.1)
+    for (i, j, R) in sites(at, rnn(:Si)+0.1)
+        r = norm(R)
         foundneig = false
         for (jj, RR) in zip(j, R)
             if (abs(RR[1]) <= TOL) && (abs(RR[2] - 1.3575) < TOL)
@@ -135,7 +136,7 @@ function symml_displacement!(at, u)
     p0 = W(F0)
     # transformation matrices
     Tp = [0 1/√2  -1/√2; 1 0 0; 0 1/√2 1/√2]
-    Tm = diagm([1,1,-1]) * Tp
+    Tm = Diagonal([1,1,-1]) * Tp
 
     for (i0, i1) in zip(I0, I1)   # each pair (i0, i1) corresponds to a ML lattice site
         x0, x1 = X[i0], X[i1]
@@ -158,7 +159,7 @@ function ml_displacement!(at, u)
 
     # transformation matrices
     Tp = [0 1/√2  -1/√2; 1 0 0; 0 1/√2 1/√2]
-    Tm = diagm([1,1,-1]) * Tp
+    Tm = Diagonal([1,1,-1]) * Tp
 
     F0 = cell(W.at)'  # get reference information
     p0 = W(F0)
@@ -211,7 +212,7 @@ function edge110(species::Symbol, R::Real;
    if cle == :anisotropic
       W = CauchyBornSi.WcbQuad(calc)
       C = elastic_moduli(W)
-      Cv = round.(voigt_moduli(C), 8)
+      Cv = round.(voigt_moduli(C), digits=8)
       U = CLE.EdgeCubic(b, Cv, a, x0 = x0)
    elseif cle == :isotropic
       @assert sym == nothing

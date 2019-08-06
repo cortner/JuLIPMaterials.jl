@@ -26,8 +26,8 @@ ee(i::Integer) = _EE[:,i]
 returns maximum strains :  `maximum( du/dr over all neighbours )` at each atom
 """
 strains(U, at; rcut = cutoff(calculator(at))) =
-   [ maximum(norm(u - U[i]) / s for (u, s) in zip(U[j], r))
-                           for (i, j, r, _1) in sites(at, rcut) ]
+   [ maximum(norm(u - U[i]) / norm(r) for (u, r) in zip(U[j], R))
+                           for (i, j, R) in sites(at, rcut) ]
 
 
 
