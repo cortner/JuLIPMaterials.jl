@@ -1,13 +1,17 @@
 
 module CLE
 
+using Statistics: mean
+
 using JuLIP: AbstractAtoms, AbstractCalculator, calculator,
-             stress, cell, set_cell!, apply_defm!
+             positions, set_positions!, volume, stress, cell, set_cell!, apply_defm!, rotation_matrix
 
 using StaticArrays, Einsum
 
 using JuLIPMaterials: Vec3, Mat3, Ten33, Ten43,
          MVec3, MMat3, MTen33, MTen43, ForceConstantMatrix1
+
+export elastic_moduli, voigt_moduli, cubic_moduli, voigt_stress, voigt_strain, cauchy_stress, cauchy_strain, rotate_moduli
 
 # TODO: get rid of this?
 const Tensor{T} = Array{T, 4}
@@ -44,21 +48,30 @@ on the stress. The error should be in the range 1e-10
 """
 elastic_moduli(at::AbstractAtoms) = elastic_moduli(calculator(at), at)
 
-function elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms)
-   F0 = cell(at)' |> Matrix
-   Ih = Matrix(1.0*I, 3,3)
-   h = eps()^(1/3)
+function elastic_moduli(calc::AbstractCalculator, at::AbstractAtoms; h=nothing)
+   X0, cell0 = positions(at), cell(at)
+   Ih = Matrix(1.0I(3))
+   h === nothing && (h = eps()^(1/3))
    C = zeros(3,3,3,3)
    for i = 1:3, a = 1:3
+      set_positions!(at, X0)
+      set_cell!(at, cell0)
+
+      Ih = Matrix(1.0I(3))
       Ih[i,a] += h
+      Ih[a,i] += h
       apply_defm!(at, Ih)
       Sp = stress(calc, at)
-      Ih[i,a] -= 2*h
-      apply_defm!(at, inv(Ih))
+
+      Ih[i,a] -= 2h
+      Ih[a,i] -= 2h
+      apply_defm!(at, Ih)
       Sm = stress(calc, at)
+
       C[i, a, :, :] = (Sp - Sm) / (2*h)
-      Ih[i,a] += h
    end
+   set_positions!(at, X0)
+   set_cell!(at, cell0)
    # symmetrise it - major symmetries C_{iajb} = C_{jbia}
    for i = 1:3, a = 1:3, j=1:3, b=1:3
       C[i,a,j,b] = C[j,b,i,a] = 0.5 * (C[i,a,j,b] + C[j,b,i,a])
@@ -87,16 +100,57 @@ Methods:
 * `voigt_moduli(at)`
 * `voigt_moduli(calc, at)`
 * `voigt_moduli(C)`
+* `voigt_moduli(C11, C12, C44)`
 """
 voigt_moduli(at::AbstractAtoms) = voigt_moduli(calculator(at), at)
 
 voigt_moduli(calc::AbstractCalculator, at::AbstractAtoms) =
    voigt_moduli(elastic_moduli(calc, at))
 
-const voigtinds = [1, 5, 9, 4, 7, 8]
+const voigtinds = [1, 5, 9, 8, 7, 4] # xx yy zz yz xz xy
 
 voigt_moduli(C::Array{T,4}) where {T} = reshape(C, 9, 9)[voigtinds, voigtinds]
 
+function voigt_moduli(C11::T, C12::T, C44::T) where {T}
+   z = zero(C11)
+   return [C11 C12 C12 z   z    z
+           C12 C11 C12 z   z    z
+           C12 C12 C11 z   z    z
+           z   z   z   C44 z    z
+           z   z   z   z   C44  z
+           z   z   z   z   z    C44]
+end
+
+"""
+Convert from 3×3 stress matrix σ to Voigt 6-vector
+"""
+voigt_stress(σ::AbstractMatrix) = (@assert size(σ) == (3,3);
+                                   reshape((σ + σ')/2, :)[voigtinds])
+voigt_stress(calc::AbstractCalculator, at::AbstractAtoms) = voigt_stress(stress(calc, at))
+voigt_stress(at::AbstractAtoms) = voigt_stress(stress(at))
+
+"""
+Convert from 3×3 strain matrix ϵ to Voigt 6-vector
+"""
+voigt_strain(ϵ::AbstractMatrix) = (@assert size(ϵ) == (3,3);
+                                   reshape(ϵ + ϵ' - Diagonal(ϵ), :)[voigtinds])
+
+# FIXME maybe there's a better name for 3x3 stress tensor than `cauchy_stress`?
+"""
+Convert from 6-vector Voigt stress to 3x3
+"""
+cauchy_stress(σ::AbstractVector) = (@assert length(σ) == 6; 
+                                    [σ[1] σ[6] σ[5]
+                                     σ[6] σ[2] σ[4]
+                                     σ[5] σ[4] σ[3]])
+
+"""
+Convert from 6-vector Voigt stress to 3x3 matrix
+"""
+cauchy_strain(ϵ::AbstractVector) = (@assert length(ϵ) == 6;
+                                    [ϵ[1]    ϵ[6]/2  ϵ[5]/2
+                                     ϵ[6]/2  ϵ[2]    ϵ[4]/2
+                                     ϵ[5]/2  ϵ[4]/2  ϵ[3]])
 
 function elastic_moduli(Cv::AbstractMatrix{T}) where {T}
    @assert size(Cv) == (6,6)
@@ -112,6 +166,61 @@ function elastic_moduli(Cv::AbstractMatrix{T}) where {T}
    end
    return C
 end
+
+"""
+    cubic_moduli(C, [tol=1e-4])
+
+Convert from elastic moduli (3x3x3x3) or Voigt moduli (6x6) to cubic elastic moduli.
+Symmetry must be obeyed to within a tolerance of `tol`. Returns (C11, C12, C44). 
+"""
+function cubic_moduli(C::AbstractMatrix; tol=1e-4)
+   C = copy(C)
+   idxss = [[(1,1), (2,2), (3,3)],                       # C11
+            [(1,2), (1,3), (2,1), (2,3), (3,1), (3,2)],  # C12 
+            [(4,4), (5,5), (6,6)]]                       # C44
+
+   cubic_C = []
+   for idxs in idxss
+      Cs = view(C, CartesianIndex.(idxs))
+      @assert maximum(abs.(Cs .- mean(Cs))) < tol
+      push!(cubic_C, mean(Cs))
+      fill!(Cs, 0.0)
+   end
+   # check remaining elements are near to zero
+   @assert maximum(abs.(C)) < tol 
+   return Tuple(cubic_C)
+end
+
+cubic_moduli(c::Array{T,4}; kwargs...) where {T} = cubic_module(voigt_moduli(c); kwargs...)
+cubic_moduli(calc::AbstractCalculator, at::AbstractAtoms; kwargs...) = cubic_moduli(elastic_moduli(calc, at); kwargs...)
+cubic_moduli(at::AbstractAtoms; kwargs...) = cubic_moduli(elastic_moduli(at); kwargs...)
+
+"""
+Return rotated elastic moduli for a general crystal
+
+Parameters
+
+`C` : array
+   3x3x3x3 tensor of elastic constants
+`A` : array
+   3x3 rotation matrix.
+
+Returns
+
+`C` : array
+   3x3x3x3 matrix of rotated elastic constants (Voigt notation).
+"""
+function rotate_moduli(C::Array{T,4}, A::AbstractMatrix{T}) where {T}
+   # check its a rotation matrix
+   @assert A * A' ≈ I
+
+   C_rot = zeros(eltype(C), 3, 3, 3, 3)
+   @einsum C_rot[i, j, k, l] = A[i, a] * A[j, b] * A[k, c] * A[l, d] * C[a, b, c, d]
+   return C_rot
+end
+
+rotate_moduli(C::AbstractMatrix{T}, A::AbstractMatrix{T}) where {T} = voigt_moduli(rotate_moduli(elastic_moduli(C), A))
+
 
 """
 `isotropic_moduli(λ, μ)`: compute 4th order tensor of elastic moduli

@@ -22,5 +22,6 @@ include("Si.jl")
 
 # include("PointDefects.jl")
 
+include("fracture.jl")
 
 end # module
