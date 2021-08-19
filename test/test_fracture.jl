@@ -3,7 +3,6 @@ using Statistics
 using PyCall
 using Optim
 using JuLIP
-using ASE
 using FiniteDifferences
 using JuLIPMaterials.CLE
 using JuLIPMaterials.Fracture
