@@ -1,6 +1,7 @@
 
 using LinearAlgebra
 using Einsum
+using ASE
 using JuLIP
 using JuLIP.Potentials
 
