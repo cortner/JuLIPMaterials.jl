@@ -5,11 +5,6 @@ using JuLIP
 using JuLIP.Potentials
 
 using JuLIPMaterials.CLE
-using ASE
-
-ase_build = pyimport("ase.build")
-lj = pyimport("ase.calculators.lj")
-matscipy_elasticity = pyimport("matscipy.elasticity")
 
 println("=========================")
 println(" Testing Elasticity      ")
