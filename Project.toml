@@ -3,6 +3,7 @@ uuid = "37d5470d-be39-5372-83c6-3e18ddf26f4a"
 version = "0.1.0"
 
 [deps]
+ASE = "51974c44-a7ed-5088-b8be-3e78c8ba416c"
 Calculus = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
 DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
 Einsum = "b7d42ee7-0b51-5a75-98ca-779d3107e4c0"

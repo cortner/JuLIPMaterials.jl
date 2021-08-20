@@ -2,6 +2,7 @@ using LinearAlgebra
 using Statistics
 using PyCall
 using Optim
+using ASE
 using JuLIP
 using FiniteDifferences
 using JuLIPMaterials.CLE
