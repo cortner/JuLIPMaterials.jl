@@ -1,19 +1,33 @@
 
 using Test, JuLIP, JuLIPMaterials
 using JuLIPMaterials: ForceConstantMatrix1
+using LinearAlgebra
 
-datapath = joinpath(dirname(pathof(JuLIP)), "..", "data")
+datapath = JuLIP.Deps.fetch_test_pots()
 eam_Fe = EAM(datapath * "/pfe.plt",
              datapath * "/ffe.plt",
              datapath * "/F_fe.plt")
 
-# equilibrate a unit cell
+## hessian test 
+at = bulk(:Fe) * 3
+set_pbc!(at, false)
+set_calculator!(at, eam_Fe)
+fixedcell!(at)
+rattle!(at, 0.1)
+x = dofs(at)
+u = rand(length(x))
+F = x -> dot(gradient(eam_Fe, at, x), u)
+dF = x -> hessian(eam_Fe, at, x) * u 
+JuLIP.Testing.fdtest(F, dF, x)
+
+
+## equilibrate a unit cell
 fe1 = bulk(:Fe)
 set_calculator!(fe1, eam_Fe)
 variablecell!(fe1)
 minimise!(fe1)
 
-# get the force constants
+## get the force constants
 fcm = ForceConstantMatrix1(eam_Fe, fe1, h = 1e-5)
 
 println("compute exact hessian on a large cell")
@@ -23,6 +37,7 @@ set_calculator!(at, eam_Fe)
 H = JuLIP.hessian_pos(eam_Fe, at)
 Hvec = JuLIP.hessian(at)
 
+
 println("random virtual displacement => compare H * u and fcm * u")
 U = rand(JVecF, length(at))
 Uvec = mat(U)[:]
@@ -30,7 +45,7 @@ V = vecs(Hvec * Uvec)
 # sanity check
 @test V[1] ≈ sum( H[1,n] * U[n] for n = 1:length(U) )
 
-# now multiply FCM * U
+## now multiply FCM * U
 Vfcm = fcm * (at, U)
 err_HxU = maximum(norm.(Vfcm - V)) / maximum(norm.(V))
 @show err_HxU
