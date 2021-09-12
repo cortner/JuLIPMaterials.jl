@@ -1,6 +1,6 @@
 name = "JuLIPMaterials"
 uuid = "37d5470d-be39-5372-83c6-3e18ddf26f4a"
-version = "0.3.0-dev"
+version = "0.3.0"
 
 [deps]
 ASE = "51974c44-a7ed-5088-b8be-3e78c8ba416c"
