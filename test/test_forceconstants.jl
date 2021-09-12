@@ -2,10 +2,9 @@
 using Test, JuLIP, JuLIPMaterials
 using JuLIPMaterials: ForceConstantMatrix1
 
-datapath = joinpath(dirname(pathof(JuLIP)), "..", "data")
-eam_Fe = EAM(datapath * "/pfe.plt",
-             datapath * "/ffe.plt",
-             datapath * "/F_fe.plt")
+eam_Fe = EAM(test_pots * "/pfe.plt",
+             test_pots * "/ffe.plt",
+             test_pots * "/F_fe.plt")
 
 # equilibrate a unit cell
 fe1 = bulk(:Fe)
