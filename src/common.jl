@@ -53,7 +53,7 @@ function *(fcm::ForceConstantMatrix1{T}, t::Tuple{<:Atoms, Vector{<: Vec3}}) whe
    for (i, j, R) in sites(at, rcut)
       for n = 1:length(R)
          for m = 1:length(fcm.R)
-            if norm(R[n] - fcm.R[m]) < 1e-7
+            if norm(R[n] - fcm.R[m]) < 1e-5
                V[i] += fcm.H[m] * (U[j[n]] - U[i])
                break
             end

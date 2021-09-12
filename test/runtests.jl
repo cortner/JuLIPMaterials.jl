@@ -11,7 +11,7 @@ tests = [
     "test_dislocations.jl",
     "test_elasticity.jl",
     "test_fracture.jl",
-   # "test_forceconstants.jl"
+   "test_forceconstants.jl"
    # "test_cauchyborn1.jl",
 ]
 
