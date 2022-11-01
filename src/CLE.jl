@@ -191,7 +191,7 @@ function cubic_moduli(C::AbstractMatrix; tol=1e-4)
    return Tuple(cubic_C)
 end
 
-cubic_moduli(c::Array{T,4}; kwargs...) where {T} = cubic_module(voigt_moduli(c); kwargs...)
+cubic_moduli(c::Array{T,4}; kwargs...) where {T} = cubic_moduli(voigt_moduli(c); kwargs...)
 cubic_moduli(calc::AbstractCalculator, at::AbstractAtoms; kwargs...) = cubic_moduli(elastic_moduli(calc, at); kwargs...)
 cubic_moduli(at::AbstractAtoms; kwargs...) = cubic_moduli(elastic_moduli(at); kwargs...)
 
